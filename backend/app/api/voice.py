@@ -8,7 +8,7 @@ import tempfile
 
 from app.models.schemas import VoiceRequest, VoiceResponse
 from app.services.voice_service import VoiceService
-from app.services.strands_agent_service import StrandsAgentService
+from app.services.agent_service import StrandsAgentService
 
 logger = logging.getLogger(__name__)
 

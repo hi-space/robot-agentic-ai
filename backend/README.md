@@ -79,13 +79,14 @@ git clone <repository-url>
 cd robot-agentic-ai/backend
 
 # 가상환경 생성
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 또는
-venv\Scripts\activate     # Windows
+uv venv
+
+source .venv/bin/activate
 
 # 의존성 설치
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+# 또는 pyproject.toml 사용 
+uv sync
 ```
 
 ### 2. 환경 변수 설정
@@ -110,7 +111,7 @@ BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 
 #### 개발 모드
 ```bash
-python main.py
+uv run python main.py
 ```
 
 #### 프로덕션 모드

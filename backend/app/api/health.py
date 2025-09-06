@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from datetime import datetime
 
 from app.models.schemas import HealthResponse
-from app.services.strands_agent_service import StrandsAgentService
+from app.services.agent_service import StrandsAgentService
 from app.services.voice_service import VoiceService
 from app.services.robot_control_service import RobotControlService
 

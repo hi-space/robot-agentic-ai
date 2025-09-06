@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 
-from app.services.strands_agent_service import StrandsAgentService
+from app.services.agent_service import StrandsAgentService
 
 logger = logging.getLogger(__name__)
 

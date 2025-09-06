@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 import json
 
 from app.models.schemas import MessageRequest
-from app.services.strands_agent_service import StrandsAgentService
+from app.services.agent_service import StrandsAgentService
 
 logger = logging.getLogger(__name__)
 

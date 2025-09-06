@@ -5,7 +5,8 @@ import asyncio
 from datetime import datetime
 
 from strands import Agent, tool
-from strands_tools import calculator, current_time, python_repl
+from strands.models import BedrockModel
+# from strands_tools import calculator, current_time, python_repl  # These tools are not available
 
 from app.core.config import settings
 from app.services.mcp_service import MCPService
@@ -160,29 +161,35 @@ class StrandsAgentService:
         self.conversation_history: List[Dict[str, str]] = []
         self.active_tasks: Dict[str, Dict[str, Any]] = {}
         
+        bedrock_model = BedrockModel(
+            model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            temperature=0.3,
+            streaming=True, # Enable/disable streaming
+        )
+
         # Initialize Strands Agent with tools
-        self.agent = Agent(tools=[
-            calculator,
-            current_time,
-            python_repl,
-            robot_damp,
-            robot_balance_stand,
-            robot_stop_move,
-            robot_stand_up,
-            robot_stand_down,
-            robot_sit,
-            robot_rise_sit,
-            robot_hello,
-            robot_stretch,
-            robot_wallow,
-            robot_scrape,
-            robot_front_flip,
-            robot_front_jump,
-            robot_front_pounce,
-            robot_dance1,
-            robot_dance2,
-            robot_finger_heart
-        ])
+        self.agent = Agent(
+            model=bedrock_model,
+            tools=[
+                robot_damp,
+                robot_balance_stand,
+                robot_stop_move,
+                robot_stand_up,
+                robot_stand_down,
+                robot_sit,
+                robot_rise_sit,
+                robot_hello,
+                robot_stretch,
+                robot_wallow,
+                robot_scrape,
+                robot_front_flip,
+                robot_front_jump,
+                robot_front_pounce,
+                robot_dance1,
+                robot_dance2,
+                robot_finger_heart
+            ]
+        )
         
     async def process_message(
         self,
@@ -260,7 +267,7 @@ class StrandsAgentService:
             
             Please respond in Korean and use the available tools as needed.
             If this is a robot command, use the appropriate robot_* tools.
-            If this is a general question, use calculator, current_time, or python_repl as appropriate.
+            If this is a general question, provide helpful information based on your knowledge.
             """
             
             # Use Strands Agent to process the message
