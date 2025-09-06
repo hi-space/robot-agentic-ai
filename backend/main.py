@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from app.core.config import settings
-from app.api import chat, voice, robot, health
+from app.api import chat, voice, robot, health, commands, stream
 
 # Configure logging
 logging.basicConfig(
@@ -95,6 +95,8 @@ app.include_router(chat.router)
 app.include_router(voice.router)
 app.include_router(robot.router)
 app.include_router(health.router)
+app.include_router(commands.router)
+app.include_router(stream.router)
 
 
 # Root endpoint

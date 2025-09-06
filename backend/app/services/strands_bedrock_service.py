@@ -27,10 +27,7 @@ class StrandsBedrockService:
         try:
             self.client = boto3.client(
                 'bedrock-runtime',
-                aws_access_key_id=settings.aws_access_key_id,
-                aws_secret_access_key=settings.aws_secret_access_key,
                 region_name=settings.aws_region,
-                endpoint_url=settings.bedrock_endpoint_url
             )
             logger.info(f"Bedrock client initialized with model: {self.model_id}")
         except Exception as e:

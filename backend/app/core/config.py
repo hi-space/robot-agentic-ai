@@ -15,10 +15,6 @@ class Settings(BaseSettings):
         default="anthropic.claude-3-5-sonnet-20241022-v2:0",
         env="BEDROCK_MODEL_ID"
     )
-    bedrock_endpoint_url: Optional[str] = Field(
-        default=None,
-        env="BEDROCK_ENDPOINT_URL"
-    )
     
     # Application Configuration
     api_host: str = Field(default="0.0.0.0", env="API_HOST")
@@ -28,7 +24,7 @@ class Settings(BaseSettings):
     
     # CORS Configuration
     cors_origins: List[str] = Field(
-        default=["http://localhost:3000", "http://127.0.0.1:3000"],
+        default=["*"],
         env="CORS_ORIGINS"
     )
     
