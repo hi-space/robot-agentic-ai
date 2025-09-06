@@ -1,10 +1,20 @@
 export interface SSEMessage {
-  type: 'message' | 'typing' | 'error' | 'complete' | 'partial';
+  type: 'message' | 'typing' | 'error' | 'complete' | 'partial' | 'task';
   content?: string;
   sender?: 'user' | 'ai';
   timestamp?: string;
   isError?: boolean;
   messageId?: string;
+  taskData?: {
+    id?: string;
+    title?: string;
+    description?: string;
+    status?: 'pending' | 'in_progress' | 'completed' | 'failed';
+    type?: 'command' | 'action' | 'response';
+    timestamp?: string;
+    progress?: number;
+    metadata?: Record<string, any>;
+  };
 }
 
 export class SSEService {
