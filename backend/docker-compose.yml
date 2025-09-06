@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-anthropic.claude-3-5-sonnet-20241022-v2:0}
+      - DEBUG=${DEBUG:-True}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:3000"]}
+    volumes:
+      - ./audio:/app/audio
+      - .:/app
+    depends_on:
+      - mcp-server
+    networks:
+      - robot-network
+
+  mcp-server:
+    image: mcp/server:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - MCP_PORT=3001
+    networks:
+      - robot-network
+
+networks:
+  robot-network:
+    driver: bridge
