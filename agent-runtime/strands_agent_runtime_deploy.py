@@ -57,7 +57,7 @@ def main():
             auto_create_ecr=True,
             requirements_file="requirements.txt",
             region=region,
-            agent_name="robot-strands-agent",
+            agent_name="robot_strands_agent",
         )
         print("Runtime configuration successful:")
         print(json.dumps(response, indent=2, default=str))

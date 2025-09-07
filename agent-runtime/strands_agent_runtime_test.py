@@ -19,7 +19,6 @@ def create_agentcore_client():
     agentcore_client = boto_session.client(
         'bedrock-agentcore',
         region_name=region_name
-        #endpoint_url=os.getenv("ENDPOINT_URL")
     )
     
     return boto_session, agentcore_client
