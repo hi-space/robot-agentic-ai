@@ -1,0 +1,321 @@
+import os
+import asyncio
+import requests
+import logging
+import access_token
+from tools import weather, get_time
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from strands import Agent, tool
+from strands_tools import calculator 
+from strands.models import BedrockModel
+from strands.tools.mcp import MCPClient
+from mcp import StdioServerParameters, stdio_client
+from mcp.client.streamable_http import streamablehttp_client
+
+
+app = BedrockAgentCoreApp()
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+# Set logging level for specific libraries
+logging.getLogger('requests').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('mcp').setLevel(logging.INFO)
+logging.getLogger('strands').setLevel(logging.INFO)
+
+# MCP Server configuration
+MCP_SERVER_URL = os.getenv("GATEWAY_URL")
+logger.info(f"MCP_SERVER_URL set to: {MCP_SERVER_URL}")
+
+
+
+# Function to check if MCP server is running
+def check_mcp_server():
+    try:
+        # Get the bearer token
+        jwt_token = os.getenv("BEARER_TOKEN")
+        
+        logger.info(f"Checking MCP server at URL: {MCP_SERVER_URL}")
+        
+        # If no bearer token, try to get one from Cognito
+        if not jwt_token:
+            logger.info("No bearer token available, trying to get one from Cognito...")
+            try:
+                jwt_token = access_token.get_gateway_access_token()
+                logger.info(f"Retrieved token: {jwt_token}")
+                logger.info(f"Cognito token obtained: {'Yes' if jwt_token else 'No'}")
+            except Exception as e:
+                logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
+        
+        if jwt_token:
+            headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"}
+            payload = {
+                "jsonrpc": "2.0",
+                "id": "test",
+                "method": "tools/list",
+                "params": {}
+            }
+            
+            try:
+                response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
+                logger.info(f"MCP server response status: {response.status_code}")
+                
+                has_tools = "tools" in response.text
+                return has_tools
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Request exception when checking MCP server: {str(e)}")
+                return False
+        else:
+            # Try without token for local testing
+            logger.info("No bearer token available, trying health endpoint")
+            try:
+                response = requests.get(f"{MCP_SERVER_URL}/health", timeout=5)
+                logger.info(f"Health endpoint response status: {response.status_code}")
+                
+                return response.status_code == 200
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Health endpoint request exception: {str(e)}")
+                return False
+    except Exception as e:
+        logger.error(f"Error checking MCP server: {str(e)}", exc_info=True)
+        return False
+
+
+
+
+# Initialize Strands Agent with MCP tools
+def initialize_agent():
+    try:
+        # Get OAuth token for authentication
+        logger.info("Starting agent initialization...")
+        
+        # First try to get token from environment variable (for Docker)
+        jwt_token = os.getenv("BEARER_TOKEN")
+        
+        # If not available in environment, try to get from Cognito
+        if not jwt_token:
+            logger.info("No token in environment, trying Cognito...")
+            try:
+                #jwt_token = asyncio.run(access_token.get_gateway_access_token())
+                jwt_token = access_token.get_gateway_access_token()
+                logger.info(f"Retrieved token: {jwt_token}")
+            except Exception as e:
+                logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
+        
+        # Create MCP client with authentication headers
+        gateway_endpoint = os.getenv("gateway_endpoint", MCP_SERVER_URL)
+        logger.info(f"Using gateway endpoint: {gateway_endpoint}")
+        
+        # Try to resolve the hostname to check network connectivity
+        try:
+            import socket
+            hostname = gateway_endpoint.split("://")[1].split("/")[0]
+            ip_address = socket.gethostbyname(hostname)
+            logger.info(f"Hostname resolved to IP: {ip_address}")
+        except Exception as e:
+            logger.error(f"Error resolving hostname: {str(e)}")
+        
+        headers = {"Authorization": f"Bearer {jwt_token}"} if jwt_token else {}
+        
+        try:
+            logger.info("Creating MCP client...")
+            
+            # Create the MCP client
+            mcp_client = MCPClient(lambda: streamablehttp_client(
+                url = f"{gateway_endpoint}/mcp",
+                headers=headers
+            ))
+            logger.info("MCP Client setup complete")
+            
+            # Enter the context manager
+            mcp_client.__enter__()
+            
+            # Get the tools from the MCP server
+            logger.info("Listing tools from MCP server...")
+            tools = mcp_client.list_tools_sync()
+            logger.info(f"Loaded {len(tools)} tools from MCP server")
+            
+            # Log available tools
+            if tools and len(tools) > 0:
+                # Try to access the tool name using the correct attribute
+                tool_names = []
+                for tool in tools:
+                    # Check if the tool has a 'schema' attribute that might contain the name
+                    if hasattr(tool, 'schema') and hasattr(tool.schema, 'name'):
+                        tool_names.append(tool.schema.name)
+                    # Or if it has a direct attribute that contains the name
+                    elif hasattr(tool, 'tool_name'):
+                        tool_names.append(tool.tool_name)
+                    # Or if it's in the __dict__
+                    elif '_name' in vars(tool):
+                        tool_names.append(vars(tool)['_name'])
+                    else:
+                        # If we can't find the name, use a placeholder
+                        tool_names.append(f"Tool-{id(tool)}")
+                
+                logger.info(f"Available tools: {', '.join(tool_names)}")
+            
+        except Exception as e:
+            logger.error(f"Error setting up MCP client: {str(e)}", exc_info=True)
+            return None, None
+        
+        # Create an agent with these tools
+        try:
+            logger.info("Creating Strands Agent with tools...")
+            model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"  # Using Claude Sonnet
+            model = BedrockModel(model_id=model_id)
+            
+            agent = Agent(
+                model=model,
+                tools=tools,
+                # tools=[
+                #     calculator, weather, get_time
+                # ],
+                system_prompt="""
+                You're a helpful assistant. You can do simple math calculations, tell the weather, and provide the current time.
+                """
+            )
+            logger.info("Agent created successfully")
+            
+            return agent, mcp_client
+        except Exception as e:
+            logger.error(f"Error creating agent: {str(e)}", exc_info=True)
+            return None, None
+    except Exception as e:
+        logger.error(f"Error initializing agent: {str(e)}", exc_info=True)
+        return None, None
+
+
+# Initialize the agent if MCP server is running
+agent = None
+mcp_client = None
+if check_mcp_server():
+    agent, mcp_client = initialize_agent()
+    if agent:
+        logger.info("Agent initialized successfully")
+    else:
+        logger.warning("Failed to initialize agent")
+else:
+    logger.warning("MCP server is not running. Agent initialization skipped.")
+
+
+
+@app.entrypoint
+async def strands_agent_bedrock_streaming(payload, context):
+    """
+    Invoke the agent with streaming capabilities
+    This function demonstrates how to implement streaming responses
+    with AgentCore Runtime using async generators
+    """
+    user_message = payload.get("prompt")
+    logger.info(f"Received user message: {user_message}")
+
+    print("=== Runtime Context Information ===")
+    print("Runtime Session ID:", context.session_id)
+    print("Context Object Type:", type(context))
+    print("User input:", user_message)
+    print("=== End Context Information ===")
+
+    global agent, mcp_client
+    
+    # Check if agent is initialized
+    if not agent:
+        logger.info("Agent not initialized, checking MCP server status...")
+        # Try to initialize the agent if MCP server is running
+        if check_mcp_server():
+            logger.info("MCP server is running, attempting to initialize agent...")
+            agent, mcp_client = initialize_agent()
+            if not agent:
+                error_msg = "Failed to initialize agent. Please ensure MCP server is running correctly."
+                logger.error(error_msg)
+                yield {"error": error_msg}
+                return
+            logger.info("Agent initialized successfully")
+        else:
+            error_msg = "Agent is not initialized. Please ensure MCP server is running."
+            logger.error(error_msg)
+            yield {"error": error_msg}
+            return
+
+
+    logger.info("Processing message with Strands Agent (streaming)...")
+    try:
+        # Stream response using agent.stream_async
+        stream = agent.stream_async(user_message)
+        async for event in stream:
+            logger.debug(f"Streaming event: {event}")
+            
+            # Process different event types
+            if "data" in event:
+                # Text chunk from the model
+                chunk = event["data"]
+                yield {
+                    "type": "chunk",
+                    "data": chunk,
+                }
+            elif "current_tool_use" in event:
+                # Tool use information
+                tool_info = event["current_tool_use"]
+                yield {
+                    "type": "tool_use",
+                    "tool_name": tool_info.get("name", "Unknown tool"),
+                    "tool_input": tool_info.get("input", {}),
+                    "tool_id": tool_info.get("toolUseId", "")
+                }
+            elif "reasoning" in event and event["reasoning"]:
+                # Reasoning information
+                yield {
+                    "type": "reasoning",
+                    "reasoning_text": event.get("reasoningText", "")
+                }
+            elif "result" in event:
+                # Final result
+                result = event["result"]
+                if hasattr(result, 'message') and hasattr(result.message, 'content'):
+                    if isinstance(result.message.content, list) and len(result.message.content) > 0:
+                        final_response = result.message.content[0].get('text', '')
+                    else:
+                        final_response = str(result.message.content)
+                else:
+                    final_response = str(result)
+                
+                yield {
+                    "type": "complete",
+                    "final_response": final_response
+                }
+            else:
+                # Pass through other events
+                yield event
+            
+    except Exception as e:
+        logger.error(f"Error in streaming mode: {str(e)}", exc_info=True)
+        yield {"error": f"Error processing request with agent (streaming): {str(e)}"}
+    
+
+
+if __name__ == "__main__":
+    # Test MCP server connection at startup
+    logger.info("Testing MCP server connection at startup...")
+    try:
+        jwt_token = access_token.get_gateway_access_token()
+        headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"} if jwt_token else {"Content-Type": "application/json"}
+        payload = {
+            "jsonrpc": "2.0",
+            "id": "test",
+            "method": "tools/list",
+            "params": {}
+        }
+        response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
+        logger.info(f"Direct test response status: {response}")
+    except Exception as e:
+        logger.error(f"Error in direct test: {str(e)}", exc_info=True)
+        
+    # Run the AgentCore Runtime App
+    app.run()
