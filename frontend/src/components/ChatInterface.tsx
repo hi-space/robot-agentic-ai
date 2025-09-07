@@ -29,7 +29,6 @@ interface ChatInterfaceProps {
   onSendMessage: (content: string) => void;
   onResetChat: () => void;
   isLoading: boolean;
-  currentAIMessage?: Message | null;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -37,7 +36,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSendMessage,
   onResetChat,
   isLoading,
-  currentAIMessage,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -119,12 +117,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <MessageBubble message={message} />
               </ListItem>
             ))}
-            {currentAIMessage && (
-              <ListItem sx={{ px: 0, py: 0.5 }}>
-                <MessageBubble message={currentAIMessage} />
-              </ListItem>
-            )}
-            {isLoading && !currentAIMessage && (
+            {isLoading && (
               <ListItem sx={{ px: 0, py: 0.5 }}>
                 <Box
                   sx={{

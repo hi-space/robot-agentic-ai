@@ -76,32 +76,43 @@ async def send_message_stream(
         
         async def generate_response():
             try:
-                # Process message through Strands Agent
-                response = await strands_agent.process_message(
+                # Process message through Strands Agent with streaming
+                async for chunk in strands_agent.process_message_stream(
                     message=request.message,
-                    session_id=request.session_id,
-                    stream=True
-                )
-                
-                # Stream the response
-                content = response.get("content", "")
-                for chunk in content.split():
-                    yield f"data: {json.dumps({'content': chunk + ' ', 'done': False})}\n\n"
-                    await asyncio.sleep(0.1)  # Small delay for streaming effect
-                
-                # Send final chunk
-                yield f"data: {json.dumps({'content': '', 'done': True, 'action_taken': response.get('action_taken')})}\n\n"
+                    session_id=request.session_id
+                ):
+                    # Format the chunk as Server-Sent Events
+                    chunk_data = {
+                        "content": chunk.get("content", ""),
+                        "done": chunk.get("done", False),
+                        "is_error": chunk.get("is_error", False),
+                        "action_taken": chunk.get("action_taken")
+                    }
+                    
+                    # Send the chunk
+                    yield f"data: {json.dumps(chunk_data, ensure_ascii=False)}\n\n"
+                    
+                    # Small delay to prevent overwhelming the client
+                    await asyncio.sleep(0.01)
                 
             except Exception as e:
                 logger.error(f"Error in streaming response: {e}")
-                yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+                error_data = {
+                    "content": f"스트리밍 처리 중 오류가 발생했습니다: {str(e)}",
+                    "done": True,
+                    "is_error": True,
+                    "action_taken": None
+                }
+                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
         
         return StreamingResponse(
             generate_response(),
-            media_type="text/plain",
+            media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Cache-Control"
             }
         )
         
@@ -223,3 +234,37 @@ async def cancel_task(
             status_code=500,
             detail=f"작업 취소 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+@router.get("/stream")
+async def stream_events():
+    """
+    Server-Sent Events endpoint for real-time communication
+    
+    Returns:
+        Streaming response with SSE events
+    """
+    async def event_generator():
+        try:
+            # Send initial connection event
+            yield f"data: {json.dumps({'type': 'connected', 'message': 'SSE connection established'}, ensure_ascii=False)}\n\n"
+            
+            # Keep connection alive
+            while True:
+                await asyncio.sleep(30)  # Send heartbeat every 30 seconds
+                yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': asyncio.get_event_loop().time()}, ensure_ascii=False)}\n\n"
+                
+        except Exception as e:
+            logger.error(f"Error in SSE stream: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
+    )

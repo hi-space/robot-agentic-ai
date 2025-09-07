@@ -23,6 +23,7 @@ export class SSEService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private messageHandler: ((message: SSEMessage) => void) | null = null;
 
   constructor() {
     this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -77,8 +78,14 @@ export class SSEService {
   }
 
   private handleMessage(data: SSEMessage) {
-    // This will be overridden by the component using this service
     console.log('SSE message received:', data);
+    if (this.messageHandler) {
+      this.messageHandler(data);
+    }
+  }
+
+  setMessageHandler(handler: (message: SSEMessage) => void): void {
+    this.messageHandler = handler;
   }
 
   sendMessage(content: string): Promise<void> {
@@ -89,27 +96,53 @@ export class SSEService {
       },
       body: JSON.stringify({
         message: content,
-        timestamp: new Date().toISOString(),
-        sender: 'user',
+        session_id: Date.now().toString(),
       }),
     }).then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return response.text();
-    }).then(text => {
+      
       // Process streaming response
-      const lines = text.split('\n');
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            this.handleMessage(data);
-          } catch (error) {
-            console.error('Error parsing streaming data:', error);
-          }
-        }
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body reader available');
       }
+      
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      const processStream = (): Promise<void> => {
+        return reader.read().then(({ done, value }) => {
+          if (done) {
+            return Promise.resolve();
+          }
+          
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Process complete lines
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                // Emit the message through the message handler
+                this.handleMessage(data);
+              } catch (error) {
+                console.error('Error parsing streaming data:', error);
+              }
+            }
+          }
+          
+          // Continue reading
+          return processStream();
+        });
+      };
+      
+      return processStream();
     });
   }
 
