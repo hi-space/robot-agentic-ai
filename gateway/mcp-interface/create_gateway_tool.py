@@ -363,7 +363,7 @@ def create_lambda_function_policy(lambda_function_name):
         print(f"Policy creation failed: {e}")
         return None
 
-def create_dummpy_lambda_function(lambda_function_path: str):
+def create_dummy_lambda_function(lambda_function_path: str):
     body = """import json
 import boto3
 import os
@@ -532,7 +532,7 @@ def update_lambda_function_arn():
             print(f"Lambda function path not found, creating new lambda function path: {lambda_function_path}")
             os.makedirs(lambda_function_path)
 
-            create_dummpy_lambda_function(lambda_function_path)
+            create_dummy_lambda_function(lambda_function_path)
             print(f"✓ Lambda function path created successfully: {lambda_function_path}")
 
             with zipfile.ZipFile(lambda_function_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:     
