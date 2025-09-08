@@ -19,7 +19,17 @@ current_folder_name = current_path.split('/')[-1]
 targetname = current_folder_name
 projectName = config.get('projectName')
 region = config.get('region')
+
 accountId = config.get('accountId')
+if not accountId:
+    session = boto3.Session()
+    region = session.region_name    
+    sts_client = session.client('sts')
+    accountId = sts_client.get_caller_identity()['Account']
+    config['accountId'] = accountId
+    print(f"accountId: {accountId}")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
 
 def create_lambda_function_policy(lambda_function_name):
     """Create IAM policy for Lambda function access"""
@@ -148,7 +158,9 @@ def create_lambda_function_policy(lambda_function_name):
                     "sqs:SendMessage",
                     "sqs:GetQueueUrl",
                     "sqs:GetQueueAttributes",
-                    "sqs:ListQueues"
+                    "sqs:ListQueues",
+                    "sqs:ReceiveMessage",
+                    "sqs:DeleteMessage"
                 ],
                 "Resource": [
                     f"arn:aws:sqs:{region}:{accountId}:robo_feedback.fifo"
@@ -551,7 +563,7 @@ def setup_iot_lambda_trigger(lambda_function_name, lambda_function_arn):
         return False
 
 def main():
-    # robo_feedback이라는 sqs를 생성합니다.
+    # Create SQS queue named robo_feedback
     create_sqs_queue("robo_feedback")
     print(f"✓ SQS queue created successfully: robo_feedback")
     
