@@ -5,12 +5,18 @@ import traceback
 
 bedrock_agent_runtime_client = boto3.client("bedrock-agent-runtime")
 
-def command_robot(action: str) -> str:
+def command_robot(action: str, message: str) -> str:
     client = boto3.client(
         'iot-data',
         region_name='ap-northeast-2'
     )        
     print('action: ', action)
+
+    # if message:
+    #     print('message: ', message)
+    #     payload = json.dumps({
+    #         "say": message, 
+    #     })
     
     if action == "HAPPY":
         show = 'HAPPY'
