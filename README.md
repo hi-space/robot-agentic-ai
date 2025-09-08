@@ -1,7 +1,7 @@
 # robot-agentic-ai
 
 
-## Robot의 Feedback 수신
+## Robot의 Feedback
 
 Robot에서 지정된 topic (robo/feedback)으로 feedback에 대한 메시지를 전송하면 IoT Core를 통해 Lambda에서 수신합니다. 이 메시지는 SQS (fifo)에 순차적으로 기록되면, 이후 client에서 가져다가 활용돕니다. 
 
