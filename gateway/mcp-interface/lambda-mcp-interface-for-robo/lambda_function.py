@@ -12,12 +12,12 @@ def command_robot(action: str, message: str) -> str:
     )        
     print('action: ', action)
 
-    # if message:
-    #     print('message: ', message)
-    #     payload = json.dumps({
-    #         "say": message, 
-    #     })
+    say = ""
+    if message:
+        print('message: ', message)
+        say = message
     
+    show = move = seq = ""
     if action == "HAPPY":
         show = 'HAPPY'
         move = 'seq'
@@ -39,13 +39,21 @@ def command_robot(action: str, message: str) -> str:
         move = 'seq'
         seq = ["MOVE_FORWARD", "SIT", "MOVE_BACKWARD"]
 
-    payload = json.dumps({
-        "show": show,  
-        "move": move, 
-        "seq": seq
-    })
+    if say:
+        payload = json.dumps({
+            "show": show,  
+            "move": move, 
+            "seq": seq,
+            "say": say, 
+        })
+    else:
+        payload = json.dumps({
+            "show": show,  
+            "move": move, 
+            "seq": seq
+        })
                         
-    topic = f"pupper/do/robo"
+    topic = f"robo/command"  # for testing
     print('topic: ', topic)
 
     try:         
@@ -77,9 +85,11 @@ def lambda_handler(event, context):
 
     action = event.get('action')
     print(f"action: {action}")
+    message = event.get('message')
+    print(f"message: {message}")
 
     if toolName == 'command':
-        result = command_robot(action)
+        result = command_robot(action, message)
         print(f"result: {result}")
         return {
             'statusCode': 200, 
