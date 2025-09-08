@@ -1,6 +1,6 @@
 {
-  "region": "us-west-2",
+  "region": "ap-northeast-2",
   "projectName": "robo",
-  "accountId": "262976740991",
-  "lambda_function_arn": "arn:aws:lambda:us-west-2:262976740991:function:lambda-feedback-manager-for-robo"
+  "accountId": "",
+  "lambda_function_arn": ""
 }
