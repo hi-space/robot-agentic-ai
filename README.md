@@ -3,7 +3,7 @@
 
 ## Robot AgentCore Gateway
 
-여기서는 Robot의 제어 명령어를 MCP를 이용합니다. 이를 구현하여 배포할 때에는 AgnetCore Gateway와 Lambda를 이용합니다. 
+여기서는 Robot의 제어 명령어 전달을 위해 MCP를 이용합니다. 이를 구현하여 배포할 때에는 AgnetCore Gateway와 Lambda를 이용합니다. 
 
 ### MCP Interface Tool Spec
 
