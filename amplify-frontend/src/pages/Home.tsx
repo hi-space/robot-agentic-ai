@@ -60,7 +60,7 @@ export default function Home() {
             lineHeight: 1.2,
           }}
         >
-          Amplify Frontend에 오신 것을 환영합니다
+          RoboGuard AgenticAI
         </Typography>
         <Typography
           variant="h6"
@@ -71,7 +71,7 @@ export default function Home() {
             mx: 'auto',
           }}
         >
-          React 19, TypeScript, AWS Amplify를 사용한 현대적인 웹 애플리케이션입니다.
+          Agentic AI와 MCP를 활용한 지능형 로봇 강아지 제어 시스템을 소개합니다. Agent가 상황을 인식하고 판단하여 MCP를 통해 로봇 강아지의 행동을 적절히 제어합니다.
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button
@@ -88,22 +88,6 @@ export default function Home() {
             }}
           >
             대시보드로 이동
-          </Button>
-          <Button
-            component={Link}
-            to="/profile"
-            variant="outlined"
-            size="large"
-            sx={{
-              borderColor: 'white',
-              color: 'white',
-              '&:hover': {
-                borderColor: 'white',
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-              },
-            }}
-          >
-            프로필 보기
           </Button>
         </Box>
       </Paper>

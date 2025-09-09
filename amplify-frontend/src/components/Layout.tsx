@@ -4,24 +4,19 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Box,
-  Container,
   Tabs,
   Tab,
 } from '@mui/material'
 import {
   Home as HomeIcon,
   Dashboard as DashboardIcon,
-  Person as PersonIcon,
-  Logout as LogoutIcon,
+  SmartToy as AgentIcon,
 } from '@mui/icons-material'
 import { styled } from '@mui/material/styles'
 
 interface LayoutProps {
   children: ReactNode
-  user: any
-  signOut: () => void
 }
 
 const StyledTabs = styled(Tabs)(() => ({
@@ -34,11 +29,11 @@ const StyledTabs = styled(Tabs)(() => ({
 
 const navigation = [
   { name: '홈', href: '/', icon: HomeIcon },
+  { name: 'Agent', href: '/agent', icon: AgentIcon },
   { name: '대시보드', href: '/dashboard', icon: DashboardIcon },
-  { name: '프로필', href: '/profile', icon: PersonIcon },
 ]
 
-export default function Layout({ children, user, signOut }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
 
   const getCurrentTabIndex = () => {
@@ -62,7 +57,7 @@ export default function Layout({ children, user, signOut }: LayoutProps) {
               color: 'primary.main'
             }}
           >
-            Amplify Frontend
+            RoboGuard AgenticAI
           </Typography>
           
           <Box sx={{ flexGrow: 1 }}>
@@ -85,27 +80,20 @@ export default function Layout({ children, user, signOut }: LayoutProps) {
             </StyledTabs>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              안녕하세요, {user?.username}님
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<LogoutIcon />}
-              onClick={signOut}
-              size="small"
-            >
-              로그아웃
-            </Button>
-          </Box>
         </Toolbar>
       </AppBar>
 
       {/* Main content */}
-      <Container maxWidth="xl" sx={{ py: 3, flexGrow: 1 }}>
+      <Box sx={{ 
+        flexGrow: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        minHeight: 0,
+        maxWidth: '100%',
+        width: '100%'
+      }}>
         {children}
-      </Container>
+      </Box>
     </Box>
   )
 }
