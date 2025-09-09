@@ -1,0 +1,18 @@
+import { defineBackend } from '@aws-amplify/backend';
+import { auth } from './auth/resource';
+import { data } from './data/resource';
+
+/**
+ * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
+ */
+const backend = defineBackend({
+  auth,
+  data,
+});
+
+// Export resources for frontend use
+export const Resources = {
+  UserPool: backend.auth.resources.userPool,
+  UserPoolClient: backend.auth.resources.userPoolClient,
+  GraphQLAPI: backend.data.resources.cfnResources.cfnGraphqlApi,
+};
