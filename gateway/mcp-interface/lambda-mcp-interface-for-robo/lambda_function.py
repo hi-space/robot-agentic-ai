@@ -53,7 +53,7 @@ def command_robot(action: str, message: str) -> str:
             "seq": seq
         })
                         
-    topic = f"robo/command"  # for testing
+    topic = f"robot/control"
     print('topic: ', topic)
 
     try:         
