@@ -14,6 +14,8 @@ from mcp.client.streamable_http import streamablehttp_client
 
 
 app = BedrockAgentCoreApp()
+agent = None
+mcp_client = None
 
 
 # Configure logging
@@ -48,9 +50,8 @@ def check_mcp_server():
         if not jwt_token:
             logger.info("No bearer token available, trying to get one from Cognito...")
             try:
-                jwt_token = access_token.get_gateway_access_token()
-                logger.info(f"Retrieved token: {jwt_token}")
-                logger.info(f"Cognito token obtained: {'Yes' if jwt_token else 'No'}")
+                jwt_token = access_token.get_gateway_access_token_with_retry(max_retries=2)
+                logger.info("Cognito token obtained successfully")
             except Exception as e:
                 logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
         
@@ -96,50 +97,22 @@ def initialize_agent():
         # Get OAuth token for authentication
         logger.info("Starting agent initialization...")
         
-        # First try to get token from environment variable (for Docker)
-        jwt_token = os.getenv("BEARER_TOKEN")
-        
-        # If not available in environment, try to get from Cognito
-        if not jwt_token:
-            logger.info("No token in environment, trying Cognito...")
-            try:
-                #jwt_token = asyncio.run(access_token.get_gateway_access_token())
-                jwt_token = access_token.get_gateway_access_token()
-                logger.info(f"Retrieved token: {jwt_token}")
-            except Exception as e:
-                logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
-        
         # Create MCP client with authentication headers
         gateway_endpoint = os.getenv("gateway_endpoint", MCP_SERVER_URL)
         logger.info(f"Using gateway endpoint: {gateway_endpoint}")
         
-        # Try to resolve the hostname to check network connectivity
         try:
-            import socket
-            hostname = gateway_endpoint.split("://")[1].split("/")[0]
-            ip_address = socket.gethostbyname(hostname)
-            logger.info(f"Hostname resolved to IP: {ip_address}")
-        except Exception as e:
-            logger.error(f"Error resolving hostname: {str(e)}")
-        
-        headers = {"Authorization": f"Bearer {jwt_token}"} if jwt_token else {}
-        
-        try:
-            logger.info("Creating MCP client...")
+            logger.info("Loading tools from MCP server with retry logic...")
             
-            # Create the MCP client
-            mcp_client = MCPClient(lambda: streamablehttp_client(
-                url = f"{gateway_endpoint}/mcp",
-                headers=headers
-            ))
-            logger.info("MCP Client setup complete")
+            # Use the retry logic from access_token module
+            tools, mcp_client = access_token.load_tools_from_mcp_with_retry(
+                gateway_endpoint, max_retries=2
+            )
             
-            # Enter the context manager
-            mcp_client.__enter__()
-            
-            # Get the tools from the MCP server
-            logger.info("Listing tools from MCP server...")
-            tools = mcp_client.list_tools_sync()
+            if not tools or not mcp_client:
+                logger.error("Failed to load tools from MCP server")
+                return None, None
+                
             logger.info(f"Loaded {len(tools)} tools from MCP server")
             
             # Log available tools
@@ -175,9 +148,6 @@ def initialize_agent():
             agent = Agent(
                 model=model,
                 tools=tools,
-                # tools=[
-                #     calculator, weather, get_time
-                # ],
                 system_prompt="""
                 You're a helpful assistant. You can do simple math calculations, tell the weather, and provide the current time.
                 """
@@ -191,20 +161,6 @@ def initialize_agent():
     except Exception as e:
         logger.error(f"Error initializing agent: {str(e)}", exc_info=True)
         return None, None
-
-
-# Initialize the agent if MCP server is running
-agent = None
-mcp_client = None
-if check_mcp_server():
-    agent, mcp_client = initialize_agent()
-    if agent:
-        logger.info("Agent initialized successfully")
-    else:
-        logger.warning("Failed to initialize agent")
-else:
-    logger.warning("MCP server is not running. Agent initialization skipped.")
-
 
 
 @app.entrypoint
@@ -290,9 +246,13 @@ async def strands_agent_bedrock_streaming(payload, context):
                     "type": "complete",
                     "final_response": final_response
                 }
-            else:
-                # Pass through other events
-                yield event
+            elif "event" in event and "metadata" in event["event"]:
+                metadata = event["event"]["metadata"]
+                yield {
+                    "type": "metadata",
+                    "metadata": metadata
+                }
+            
             
     except Exception as e:
         logger.error(f"Error in streaming mode: {str(e)}", exc_info=True)
@@ -304,7 +264,7 @@ if __name__ == "__main__":
     # Test MCP server connection at startup
     logger.info("Testing MCP server connection at startup...")
     try:
-        jwt_token = access_token.get_gateway_access_token()
+        jwt_token = access_token.get_gateway_access_token_with_retry(max_retries=2)
         headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"} if jwt_token else {"Content-Type": "application/json"}
         payload = {
             "jsonrpc": "2.0",

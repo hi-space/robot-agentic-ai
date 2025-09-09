@@ -355,6 +355,73 @@ def get_gateway_access_token_with_retry(max_retries=2):
     
     raise Exception(f"Failed to obtain token after {max_retries + 1} attempts")
 
+def load_tools_from_mcp_with_retry(gateway_endpoint, max_retries=2):
+    """
+    Load tools from MCP server with automatic token refresh on failure
+    """
+    from strands.tools.mcp import MCPClient
+    from mcp.client.streamable_http import streamablehttp_client
+    
+    for attempt in range(max_retries + 1):
+        try:
+            print(f"Loading MCP tools attempt {attempt + 1}/{max_retries + 1}")
+            
+            # Get current token
+            jwt_token = get_gateway_access_token_with_retry(max_retries=1)
+            if not jwt_token:
+                raise Exception("Failed to obtain bearer token")
+            
+            headers = {"Authorization": f"Bearer {jwt_token}"}
+            
+            # Create MCP client
+            mcp_client = MCPClient(lambda: streamablehttp_client(
+                url=f"{gateway_endpoint}/mcp",
+                headers=headers
+            ))
+            
+            # Enter context manager
+            mcp_client.__enter__()
+            
+            # Get tools
+            tools = mcp_client.list_tools_sync()
+            print(f"Successfully loaded {len(tools)} tools from MCP server")
+            
+            return tools, mcp_client
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"MCP tools loading attempt {attempt + 1} failed: {error_msg}")
+            
+            # Check if it's a token-related error
+            if ("403" in error_msg or "Forbidden" in error_msg or 
+                "Invalid Bearer token" in error_msg or "Unauthorized" in error_msg):
+                
+                if attempt < max_retries:
+                    print("Token may be expired, getting fresh token and retrying...")
+                    try:
+                        # Force refresh token by getting new one directly from Cognito
+                        fresh_token = get_cognito_token_direct()
+                        if fresh_token:
+                            save_bearer_token_to_secret_manager(fresh_token)
+                            print("Fresh token obtained and saved, retrying...")
+                            continue
+                        else:
+                            print("Failed to get fresh token")
+                            break
+                    except Exception as token_error:
+                        print(f"Error getting fresh token: {token_error}")
+                        break
+                else:
+                    print("Max retries reached for token refresh")
+                    break
+            else:
+                # Non-token related error, don't retry
+                print(f"Non-token related error, not retrying: {error_msg}")
+                break
+    
+    print("Failed to load tools from MCP server after all attempts")
+    return None, None
+
 # Usage examples:
 # # 1. 기본 토큰 획득 (자동 갱신 포함)
 # token = get_gateway_access_token()
@@ -372,6 +439,19 @@ def get_gateway_access_token_with_retry(max_retries=2):
 # # 4. 토큰 유효성 검사 및 갱신
 # valid_token = refresh_bearer_token_if_needed(current_token)
 
+# # 5. MCP 도구 로드 (토큰 만료 시 자동 재시도)
+# tools, mcp_client = load_tools_from_mcp_with_retry(gateway_endpoint)
+
 if __name__ == "__main__":
     token = get_gateway_access_token()
     print(f"Final token: {token}")
+    
+    # Test MCP tools loading
+    gateway_endpoint = os.getenv("gateway_endpoint") or os.getenv("GATEWAY_URL")
+    if gateway_endpoint:
+        print(f"Testing MCP tools loading from: {gateway_endpoint}")
+        tools, mcp_client = load_tools_from_mcp_with_retry(gateway_endpoint)
+        if tools:
+            print(f"Successfully loaded {len(tools)} tools")
+        else:
+            print("Failed to load tools")
