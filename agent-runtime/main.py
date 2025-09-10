@@ -1,14 +1,14 @@
 import logging
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from config import Config
-from mcp_manager import MCPServerManager
-from agent_manager import AgentManager
-from stream_processor import StreamProcessor
+from config.config import Config
+from core.mcp_manager import MCPServerManager
+from core.agent_manager import AgentManager
+from core.stream_processor import StreamProcessor
 from utils.logger import LoggerSetup
 
 
 # Initialize configuration and logging
-config = Config.from_env()
+config = Config.from_config_file()
 logger = LoggerSetup.setup_logging()
 app = BedrockAgentCoreApp()
 
@@ -34,9 +34,12 @@ async def strands_agent_bedrock_streaming(payload, context):
     print("=== End Context Information ===")
 
     # Ensure agent is initialized
+    logger.info("Checking agent initialization...")
     if not agent_manager.ensure_initialized():
         error_msg = "Failed to initialize agent. Please ensure MCP server is running correctly."
         logger.error(error_msg)
+        logger.error(f"MCP server URL: {mcp_manager.config.mcp_server_url}")
+        logger.error(f"Bearer token available: {bool(mcp_manager.config.bearer_token)}")
         yield {"error": error_msg}
         return
 

@@ -2,9 +2,9 @@ import logging
 from typing import Optional, Any
 from strands import Agent
 from strands.models import BedrockModel
-from config import Config
-from mcp_manager import MCPServerManager
-from prompt import ORCHESTRATOR_PROMPT
+from config.config import Config
+from core.mcp_manager import MCPServerManager
+from prompts.prompt import ORCHESTRATOR_PROMPT
 from tools.get_robot_status import get_robot_status
 from tools.observer_env import observe_env
 

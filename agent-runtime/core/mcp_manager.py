@@ -1,9 +1,9 @@
 import os
 import requests
 import logging
-import access_token
+from auth import access_token
 from typing import Optional, Tuple, Any, Dict
-from config import Config
+from config.config import Config
 
 
 class MCPServerManager:
@@ -85,8 +85,14 @@ class MCPServerManager:
         try:
             self.logger.info(f"Checking MCP server at URL: {self.config.mcp_server_url}")
             
+            # Check if MCP server URL is configured
+            if not self.config.mcp_server_url:
+                self.logger.error("MCP server URL is not configured")
+                return False
+            
             # Try with authentication first
             if self.config.bearer_token or self._get_auth_headers():
+                self.logger.info("Attempting to check MCP server with authentication")
                 return self._check_with_auth()
             else:
                 # Fallback to health endpoint for local testing
@@ -101,6 +107,13 @@ class MCPServerManager:
         """Load tools from MCP server with retry logic"""
         try:
             self.logger.info("Loading tools from MCP server with retry logic...")
+            
+            # Check if MCP server URL is configured
+            if not self.config.mcp_server_url:
+                self.logger.error("MCP server URL is not configured, cannot load tools")
+                return None, None
+            
+            self.logger.info(f"Attempting to load tools from: {self.config.mcp_server_url}")
             
             tools, mcp_client = access_token.load_tools_from_mcp_with_retry(
                 self.config.mcp_server_url,

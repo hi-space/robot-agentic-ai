@@ -37,4 +37,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["opentelemetry-instrument", "python", "-m", "strands_agent_runtime"]
+CMD ["opentelemetry-instrument", "python", "-m", "main"]

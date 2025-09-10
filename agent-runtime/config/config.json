@@ -14,7 +14,7 @@
     "lambda_function_arn": "arn:aws:lambda:us-west-2:533267442321:function:lambda-mcp-interface-for-robo",
     "secret_name": "robo/credentials",
     "gateway_name": "robo",
-    "gateway_url": "https://robo-zyqd8iue49.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp",
+    "gateway_url": "https://robo-zyqd8iue49.gateway.bedrock-agentcore.us-west-2.amazonaws.com",
     "gateway_id": "robo-zyqd8iue49",
     "target_name": "mcp-interface",
     "target_id": "EEA5BYPFIM"

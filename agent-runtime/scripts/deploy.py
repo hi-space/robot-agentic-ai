@@ -3,36 +3,42 @@ import time
 import json
 import boto3
 from pathlib import Path
-from dotenv import load_dotenv
 from bedrock_agentcore_starter_toolkit import Runtime
 from boto3.session import Session
 
-# Load environment variables from .env file
-load_dotenv()
+def load_config():
+    """Load configuration from config.json"""
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'config.json')
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        return config
+    except FileNotFoundError:
+        raise FileNotFoundError(f"config.json not found at {config_path}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in config.json: {e}")
 
-# Initialize AWS session
-boto_session = Session()
-region = boto_session.region_name or os.getenv("AWS_REGION", "us-west-2")
+# Load configuration
+config = load_config()
+region = config.get('region', 'us-west-2')
 
 print(f"Using AWS Region: {region}")
 
-# Environment variables configuration
-def get_env_vars():
-    """Get environment variables with proper fallbacks"""
-    env_vars = {
+# Configuration variables
+def get_config_vars():
+    """Get configuration variables from config.json"""
+    config_vars = {
         "AWS_REGION": region,
-        "AGENT_RUNTIME_ARN": os.getenv("AGENT_RUNTIME_ARN"),
-        "GATEWAY_URL": os.getenv("GATEWAY_URL"),
-        "COGNITO_DOMAIN": os.getenv("COGNITO_DOMAIN"),
-        "COGNITO_CLIENT_ID": os.getenv("COGNITO_CLIENT_ID"),
-        "COGNITO_USERNAME": os.getenv("COGNITO_USERNAME"),
-        "COGNITO_PASSWORD": os.getenv("COGNITO_PASSWORD"),
-        "SECRET_NAME": os.getenv("SECRET_NAME"),
-        "BEARER_TOKEN": os.getenv("BEARER_TOKEN", ""),
+        "GATEWAY_URL": config.get('gateway_url'),
+        "COGNITO_CLIENT_ID": config.get('cognito', {}).get('client_id'),
+        "COGNITO_USERNAME": config.get('cognito', {}).get('test_username'),
+        "COGNITO_PASSWORD": config.get('cognito', {}).get('test_password'),
+        "SECRET_NAME": config.get('secret_name'),
+        "BEARER_TOKEN": "",  # This might need to be set separately if needed
     }
     
     # Filter out None values
-    return {k: v for k, v in env_vars.items() if v is not None}
+    return {k: v for k, v in config_vars.items() if v is not None}
 
 
 
@@ -40,9 +46,9 @@ def main():
     """Main deployment function"""
     print("Starting Strands Agent Runtime Deployment...")
     
-    # Get environment variables
-    env_vars = get_env_vars()
-    print(env_vars)
+    # Get configuration variables
+    config_vars = get_config_vars()
+    print(config_vars)
     
     # Initialize Bedrock AgentCore Runtime
     print("\n=== Initializing Bedrock AgentCore Runtime ===")
@@ -52,7 +58,7 @@ def main():
     print("\n=== Configuring Runtime ===")
     try:
         response = agentcore_runtime.configure(
-            entrypoint="strands_agent_runtime.py",
+            entrypoint="main.py",
             auto_create_execution_role=True,
             auto_create_ecr=True,
             requirements_file="requirements.txt",
@@ -68,7 +74,7 @@ def main():
     # Launch the runtime
     print("\n=== Launching Runtime ===")
     try:
-        launch_result = agentcore_runtime.launch(env_vars=env_vars)
+        launch_result = agentcore_runtime.launch(env_vars=config_vars)
         print("Runtime launch successful:")
         print(json.dumps(launch_result, indent=2, default=str))
     except Exception as e:
@@ -106,7 +112,7 @@ def main():
     print(f"Region: {region}")
     print(f"Agent Name: strands_claude_streaming")
     print(f"Entrypoint: strands_agent_runtime.py")
-    print(f"Environment Variables: {len(env_vars)} configured")
+    print(f"Configuration Variables: {len(config_vars)} configured")
     
     return True
 
