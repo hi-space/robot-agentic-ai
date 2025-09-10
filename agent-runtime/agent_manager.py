@@ -4,6 +4,9 @@ from strands import Agent
 from strands.models import BedrockModel
 from config import Config
 from mcp_manager import MCPServerManager
+from prompt import ORCHESTRATOR_PROMPT
+from tools.get_robot_status import get_robot_status
+from tools.observer_env import observe_env
 
 
 class AgentManager:
@@ -17,18 +20,25 @@ class AgentManager:
         self.mcp_client: Optional[Any] = None
     
     def initialize(self) -> bool:
-        """Initialize the agent with MCP tools"""
+        """Initialize the agent with MCP tools and local tools"""
         try:
             self.logger.info("Starting agent initialization...")
             
             # Load tools from MCP server
-            tools, mcp_client = self.mcp_manager.load_tools()
-            if not tools or not mcp_client:
+            mcp_tools, mcp_client = self.mcp_manager.load_tools()
+            if not mcp_tools or not mcp_client:
                 self.logger.error("Failed to load tools from MCP server")
                 return False
             
+            # Load local tools
+            local_tools = [get_robot_status, observe_env]
+            
+            # Combine MCP tools and local tools
+            all_tools = mcp_tools + local_tools
+            self.logger.info(f"Loaded {len(mcp_tools)} MCP tools and {len(local_tools)} local tools")
+            
             # Create the agent
-            if self._create_agent(tools):
+            if self._create_agent(all_tools):
                 self.mcp_client = mcp_client
                 self.logger.info("Agent initialized successfully")
                 return True
@@ -49,9 +59,7 @@ class AgentManager:
             self.agent = Agent(
                 model=model,
                 tools=tools,
-                system_prompt="""당신은 사용자 요청에 따라 로봇에게 행동을 지시합니다.
-                항상 적절한 도구를 선택해 사용하고, 최종적으로는 사용자가 이해하기 쉽게 현재 상황을 설명해줘.
-                """
+                system_prompt=ORCHESTRATOR_PROMPT
             )
             
             self.logger.info("Agent created successfully")

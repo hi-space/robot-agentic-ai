@@ -4,7 +4,7 @@ from config import Config
 from mcp_manager import MCPServerManager
 from agent_manager import AgentManager
 from stream_processor import StreamProcessor
-from logger_setup import LoggerSetup
+from utils.logger import LoggerSetup
 
 
 # Initialize configuration and logging
