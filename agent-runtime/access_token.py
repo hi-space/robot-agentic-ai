@@ -94,7 +94,7 @@ def refresh_bearer_token_if_needed(bearer_token, test_url=None):
     Test if bearer token is valid and refresh if needed (like GitHub code)
     """
     if not test_url:
-        test_url = os.getenv("gateway_endpoint")
+        test_url = os.getenv("GATEWAY_URL")
     
     if not test_url or not bearer_token:
         return bearer_token
@@ -123,7 +123,7 @@ def refresh_bearer_token_if_needed(bearer_token, test_url=None):
         })
         
         response = requests.post(
-            test_url,
+            f"{test_url}/mcp",
             headers=headers,
             data=test_body,
             timeout=30
@@ -288,6 +288,10 @@ def get_gateway_access_token():
     Main function that checks secret manager first, then tries bedrock_agentcore, 
     then falls back to direct Cognito with automatic token refresh
     """
+    # Set GATEWAY_URL if not already set (for token validation)
+    if not os.getenv("GATEWAY_URL") and os.getenv("gateway_endpoint"):
+        os.environ["GATEWAY_URL"] = os.getenv("gateway_endpoint")
+    
     # First check if we have a token in environment variable (for Docker)
     jwt_token = os.getenv("BEARER_TOKEN")
     if jwt_token:
@@ -371,6 +375,44 @@ def load_tools_from_mcp_with_retry(gateway_endpoint, max_retries=2):
             if not jwt_token:
                 raise Exception("Failed to obtain bearer token")
             
+            # Test token validity first with a simple request
+            print("Testing token validity before MCP connection...")
+            test_headers = {
+                "Authorization": f"Bearer {jwt_token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream"
+            }
+            
+            test_payload = {
+                "jsonrpc": "2.0",
+                "id": "test",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "test-client",
+                        "version": "1.0.0"
+                    }
+                }
+            }
+            
+            import requests
+            test_response = requests.post(
+                f"{gateway_endpoint}/mcp",
+                headers=test_headers,
+                data=json.dumps(test_payload),
+                timeout=30
+            )
+            
+            print(f"Token test response status: {test_response.status_code}")
+            if test_response.status_code != 200:
+                print(f"Token test failed: {test_response.text}")
+                if test_response.status_code in [401, 403]:
+                    raise Exception(f"Token authentication failed: {test_response.status_code}")
+            
+            print("Token is valid, proceeding with MCP connection...")
+            
             headers = {"Authorization": f"Bearer {jwt_token}"}
             
             # Create MCP client
@@ -393,8 +435,9 @@ def load_tools_from_mcp_with_retry(gateway_endpoint, max_retries=2):
             print(f"MCP tools loading attempt {attempt + 1} failed: {error_msg}")
             
             # Check if it's a token-related error
-            if ("403" in error_msg or "Forbidden" in error_msg or 
-                "Invalid Bearer token" in error_msg or "Unauthorized" in error_msg):
+            if ("401" in error_msg or "403" in error_msg or "Forbidden" in error_msg or 
+                "Invalid Bearer token" in error_msg or "Unauthorized" in error_msg or
+                "Token authentication failed" in error_msg):
                 
                 if attempt < max_retries:
                     print("Token may be expired, getting fresh token and retrying...")

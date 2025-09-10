@@ -3,13 +3,10 @@ import asyncio
 import requests
 import logging
 import access_token
-from tools import weather, get_time
+from tools import get_time
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent, tool
-from strands_tools import calculator 
 from strands.models import BedrockModel
-from strands.tools.mcp import MCPClient
-from mcp import StdioServerParameters, stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 
 
@@ -36,6 +33,10 @@ logging.getLogger('strands').setLevel(logging.INFO)
 MCP_SERVER_URL = os.getenv("GATEWAY_URL")
 logger.info(f"MCP_SERVER_URL set to: {MCP_SERVER_URL}")
 
+# Set GATEWAY_URL environment variable for access_token module
+if MCP_SERVER_URL and not os.getenv("GATEWAY_URL"):
+    os.environ["GATEWAY_URL"] = MCP_SERVER_URL
+
 
 
 # Function to check if MCP server is running
@@ -46,14 +47,16 @@ def check_mcp_server():
         
         logger.info(f"Checking MCP server at URL: {MCP_SERVER_URL}")
         
-        # If no bearer token, try to get one from Cognito
+        # If no bearer token, try to get one (this will automatically refresh if needed)
         if not jwt_token:
-            logger.info("No bearer token available, trying to get one from Cognito...")
+            logger.info("No bearer token available, trying to get one...")
             try:
                 jwt_token = access_token.get_gateway_access_token_with_retry(max_retries=2)
-                logger.info("Cognito token obtained successfully")
+                logger.info("Token obtained successfully")
+                # Update environment variable with the new token
+                os.environ["BEARER_TOKEN"] = jwt_token
             except Exception as e:
-                logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
+                logger.error(f"Error getting token: {str(e)}", exc_info=True)
         
         if jwt_token:
             headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"}
@@ -68,8 +71,12 @@ def check_mcp_server():
                 response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
                 logger.info(f"MCP server response status: {response.status_code}")
                 
-                has_tools = "tools" in response.text
-                return has_tools
+                if response.status_code == 200:
+                    has_tools = "tools" in response.text
+                    return has_tools
+                else:
+                    logger.error(f"MCP server response error: {response.status_code} - {response.text}")
+                    return False
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request exception when checking MCP server: {str(e)}")
                 return False
@@ -98,7 +105,7 @@ def initialize_agent():
         logger.info("Starting agent initialization...")
         
         # Create MCP client with authentication headers
-        gateway_endpoint = os.getenv("gateway_endpoint", MCP_SERVER_URL)
+        gateway_endpoint = os.getenv("GATEWAY_URL", MCP_SERVER_URL)
         logger.info(f"Using gateway endpoint: {gateway_endpoint}")
         
         try:
@@ -142,14 +149,14 @@ def initialize_agent():
         # Create an agent with these tools
         try:
             logger.info("Creating Strands Agent with tools...")
-            model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"  # Using Claude Sonnet
+            model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
             model = BedrockModel(model_id=model_id)
             
             agent = Agent(
                 model=model,
                 tools=tools,
-                system_prompt="""
-                You're a helpful assistant. You can do simple math calculations, tell the weather, and provide the current time.
+                system_prompt="""당신은 사용자 요청에 따라 로봇에게 행동을 지시합니다.
+                항상 적절한 도구를 선택해 사용하고, 최종적으로는 사용자가 이해하기 쉽게 현재 상황을 설명해줘.
                 """
             )
             logger.info("Agent created successfully")
@@ -256,26 +263,9 @@ async def strands_agent_bedrock_streaming(payload, context):
             
     except Exception as e:
         logger.error(f"Error in streaming mode: {str(e)}", exc_info=True)
-        yield {"error": f"Error processing request with agent (streaming): {str(e)}"}
+        yield {"error": f"Error processing request with agent: {str(e)}"}
     
 
-
 if __name__ == "__main__":
-    # Test MCP server connection at startup
-    logger.info("Testing MCP server connection at startup...")
-    try:
-        jwt_token = access_token.get_gateway_access_token_with_retry(max_retries=2)
-        headers = {"Authorization": f"Bearer {jwt_token}", "Content-Type": "application/json"} if jwt_token else {"Content-Type": "application/json"}
-        payload = {
-            "jsonrpc": "2.0",
-            "id": "test",
-            "method": "tools/list",
-            "params": {}
-        }
-        response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
-        logger.info(f"Direct test response status: {response}")
-    except Exception as e:
-        logger.error(f"Error in direct test: {str(e)}", exc_info=True)
-        
     # Run the AgentCore Runtime App
     app.run()
