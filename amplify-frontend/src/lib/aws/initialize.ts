@@ -28,12 +28,12 @@ export default async function initializeAWS(options: AWSInitializationOptions = 
 
   try {
     // 1. 환경 변수 검증
-    if (validateConfig && !validateEnvironmentVariables()) {
+    if (validateConfig && !(await validateEnvironmentVariables())) {
       throw new Error('필수 환경 변수가 누락되었습니다.');
     }
 
     // 2. Amplify 초기화
-    initializeAmplify(environment);
+    await initializeAmplify(environment);
     console.log(`AWS가 ${environment} 환경으로 초기화되었습니다.`);
 
     // 3. 서비스 상태 확인

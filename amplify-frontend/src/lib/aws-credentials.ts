@@ -1,5 +1,8 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Amplify } from 'aws-amplify';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
+import outputs from '../amplify_outputs.json';
 
 /**
  * AWS 자격 증명 정보를 나타내는 인터페이스
@@ -29,13 +32,65 @@ export interface AWSConfig {
  */
 export async function getAWSCredentials(): Promise<AWSCredentials> {
   try {
-    const session = await fetchAuthSession();
+    console.log('fetchAuthSession 호출 시작...');
+    const session = await fetchAuthSession({ forceRefresh: true });
+    console.log('fetchAuthSession 응답:', {
+      hasCredentials: !!session.credentials,
+      hasIdentityId: !!session.identityId,
+      hasTokens: !!session.tokens,
+      credentials: session.credentials ? {
+        accessKeyId: session.credentials.accessKeyId,
+        hasSecretAccessKey: !!session.credentials.secretAccessKey,
+        hasSessionToken: !!session.credentials.sessionToken,
+        expiration: session.credentials.expiration
+      } : null
+    });
     
-    if (!session.credentials) {
-      throw new Error('AWS 자격 증명을 가져올 수 없습니다. 사용자가 로그인되어 있는지 확인하세요.');
+    if (session.credentials) {
+      // 인증된 사용자의 자격 증명 사용
+      const credentials = session.credentials;
+      return {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        sessionToken: credentials.sessionToken,
+        expiration: credentials.expiration ? new Date(credentials.expiration) : undefined,
+      };
+    } else {
+      // 인증되지 않은 사용자의 경우 Cognito Identity Pool 사용
+      console.log('인증되지 않은 사용자 - Cognito Identity Pool 사용');
+      return await getUnauthenticatedCredentials();
     }
+  } catch (error) {
+    console.error('fetchAuthSession 실패, Cognito Identity Pool 사용:', error);
+    return await getUnauthenticatedCredentials();
+  }
+}
 
-    const credentials = session.credentials;
+/**
+ * 인증되지 않은 사용자를 위한 자격 증명 가져오기
+ */
+async function getUnauthenticatedCredentials(): Promise<AWSCredentials> {
+  try {
+    // amplify_outputs.json에서 직접 설정 가져오기
+    const identityPoolId = outputs.auth.identity_pool_id;
+    const region = outputs.auth.aws_region;
+    
+    if (!identityPoolId) {
+      console.error('Identity Pool ID를 찾을 수 없습니다. amplify_outputs.json을 확인하세요.');
+      throw new Error('Identity Pool ID를 찾을 수 없습니다.');
+    }
+    
+    console.log('Cognito Identity Pool 사용:', { identityPoolId, region });
+    
+    const cognitoIdentityClient = new CognitoIdentityClient({ region });
+    const cognitoCredentials = fromCognitoIdentityPool({
+      client: cognitoIdentityClient,
+      identityPoolId: identityPoolId,
+      logins: {},
+    });
+    
+    // 자격 증명을 실제로 가져오기
+    const credentials = await cognitoCredentials();
     
     return {
       accessKeyId: credentials.accessKeyId,
@@ -44,8 +99,8 @@ export async function getAWSCredentials(): Promise<AWSCredentials> {
       expiration: credentials.expiration ? new Date(credentials.expiration) : undefined,
     };
   } catch (error) {
-    console.error('AWS 자격 증명 가져오기 실패:', error);
-    throw new Error(`AWS 자격 증명을 가져오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    console.error('Cognito Identity Pool 자격 증명 가져오기 실패:', error);
+    throw new Error(`인증되지 않은 사용자 자격 증명을 가져오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
   }
 }
 
@@ -67,10 +122,10 @@ export function getAWSRegion(): string {
     if (config.API?.GraphQL?.region) return config.API.GraphQL.region;
     
     // 기본값 반환
-    return 'us-east-1';
+    return 'us-west-2';
   } catch (error) {
     console.warn('AWS 리전을 가져올 수 없습니다. 기본값을 사용합니다:', error);
-    return 'us-east-1';
+    return 'us-west-2';
   }
 }
 

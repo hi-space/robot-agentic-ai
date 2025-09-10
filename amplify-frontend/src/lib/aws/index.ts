@@ -45,4 +45,8 @@ export {
 } from '../aws-utils';
 
 // 기본 AWS 설정 초기화
-export { default as initializeAWS } from './initialize';
+export { 
+  default as initializeAWS,
+  initializeAWSForDevelopment,
+  initializeAWSForProduction
+} from './initialize';

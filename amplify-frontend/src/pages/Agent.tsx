@@ -14,6 +14,8 @@ import {
   IconButton,
   Paper,
   Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import {
@@ -35,6 +37,7 @@ import {
   Home as HomeIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
+import { invokeAgentCore, processAgentCoreStream, validateEnvironment } from '../lib/BedrockAgentCore'
 
 // 타입 정의
 interface ChatMessage {
@@ -50,6 +53,12 @@ interface Task {
   status: 'pending' | 'in_progress' | 'completed' | 'failed'
   progress?: number
   timestamp: Date
+}
+
+interface AgentCoreStatus {
+  isConnected: boolean
+  isLoading: boolean
+  error: string | null
 }
 
 // 스타일드 컴포넌트
@@ -77,7 +86,9 @@ const StyledButton = styled(Button)(() => ({
   },
 }))
 
-const ChatBubble = styled(Paper)<{ isUser: boolean }>(({ theme, isUser }) => ({
+const ChatBubble = styled(Paper, {
+  shouldForwardProp: (prop) => prop !== 'isUser',
+})<{ isUser: boolean }>(({ theme, isUser }) => ({
   padding: '12px 16px',
   borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
   backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[50],
@@ -98,6 +109,12 @@ export default function Dashboard() {
     },
   ])
   const [inputText, setInputText] = useState('')
+  const [agentCoreStatus, setAgentCoreStatus] = useState<AgentCoreStatus>({
+    isConnected: false,
+    isLoading: false,
+    error: null,
+  })
+  const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [tasks] = useState<Task[]>([
     {
       id: '1',
@@ -141,7 +158,35 @@ export default function Dashboard() {
     scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = (text: string) => {
+  // AgentCore 연결 상태 확인
+  useEffect(() => {
+    const checkAgentCoreConnection = async () => {
+      setAgentCoreStatus(prev => ({ ...prev, isLoading: true, error: null }))
+      
+      try {
+        const isValid = validateEnvironment()
+        if (!isValid) {
+          throw new Error('환경 변수가 올바르게 설정되지 않았습니다.')
+        }
+        
+        setAgentCoreStatus({
+          isConnected: true,
+          isLoading: false,
+          error: null,
+        })
+      } catch (error) {
+        setAgentCoreStatus({
+          isConnected: false,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'AgentCore 연결 실패',
+        })
+      }
+    }
+
+    checkAgentCoreConnection()
+  }, [])
+
+  const handleSendMessage = async (text: string) => {
     if (!text.trim()) return
 
     const newMessage: ChatMessage = {
@@ -154,25 +199,110 @@ export default function Dashboard() {
     setMessages(prev => [...prev, newMessage])
     setInputText('')
 
-    // 챗봇 응답 시뮬레이션
-    setTimeout(() => {
-      const responses = [
-        '네, 이해했습니다. 해당 작업을 수행하겠습니다.',
-        '로봇이 명령을 받았습니다. 작업을 시작합니다.',
-        '상황을 분석하고 적절한 조치를 취하겠습니다.',
-        '안전을 확인한 후 작업을 진행하겠습니다.',
-        '센서 데이터를 수집하여 상황을 파악하겠습니다.',
-      ]
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-      
-      const botMessage: ChatMessage = {
+    // AgentCore 연결 상태 확인
+    if (!agentCoreStatus.isConnected) {
+      const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
+        text: 'AgentCore에 연결할 수 없습니다. 환경 설정을 확인해주세요.',
         isUser: false,
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, botMessage])
-    }, 1000)
+      setMessages(prev => [...prev, errorMessage])
+      return
+    }
+
+    // 로딩 메시지 추가
+    const loadingMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      text: 'AI가 응답을 생성하고 있습니다...',
+      isUser: false,
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, loadingMessage])
+
+    try {
+      // AgentCore 호출
+      const stream = await invokeAgentCore(text.trim(), currentSessionId)
+      
+      // 세션 ID 업데이트 (첫 번째 호출인 경우)
+      if (!currentSessionId) {
+        setCurrentSessionId(`session-${Date.now()}`)
+      }
+
+      let fullResponse = ''
+      let isFirstChunk = true
+
+      await processAgentCoreStream(
+        stream,
+        // onChunk: 스트리밍 텍스트 처리
+        (chunk: string) => {
+          if (isFirstChunk) {
+            // 첫 번째 청크가 오면 로딩 메시지를 실제 응답으로 교체
+            setMessages(prev => 
+              prev.map(msg => 
+                msg.id === loadingMessage.id 
+                  ? { ...msg, text: chunk }
+                  : msg
+              )
+            )
+            isFirstChunk = false
+          } else {
+            // 이후 청크들은 기존 메시지에 추가
+            setMessages(prev => 
+              prev.map(msg => 
+                msg.id === loadingMessage.id 
+                  ? { ...msg, text: msg.text + chunk }
+                  : msg
+              )
+            )
+          }
+          fullResponse += chunk
+        },
+        // onToolUse: 도구 사용 정보 처리
+        (toolName: string, toolInput: any) => {
+          console.log(`도구 사용: ${toolName}`, toolInput)
+        },
+        // onReasoning: 추론 과정 처리
+        (reasoning: string) => {
+          console.log('AI 추론:', reasoning)
+        },
+        // onComplete: 최종 응답 처리
+        (finalResponse: string) => {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === loadingMessage.id 
+                ? { ...msg, text: finalResponse }
+                : msg
+            )
+          )
+        },
+        // onError: 에러 처리
+        (error: string) => {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === loadingMessage.id 
+                ? { ...msg, text: `오류가 발생했습니다: ${error}` }
+                : msg
+            )
+          )
+        }
+      )
+
+    } catch (error) {
+      console.error('AgentCore 호출 오류:', error)
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === loadingMessage.id 
+            ? { 
+                ...msg, 
+                text: `AgentCore 호출 중 오류가 발생했습니다: ${
+                  error instanceof Error ? error.message : '알 수 없는 오류'
+                }` 
+              }
+            : msg
+        )
+      )
+    }
   }
 
   const handleButtonClick = (command: string) => {
@@ -406,12 +536,25 @@ export default function Dashboard() {
                 </Typography>
               </Box>
               <Chip 
-                label="온라인" 
-                color="success" 
+                label={agentCoreStatus.isLoading ? "연결중..." : 
+                       agentCoreStatus.isConnected ? "온라인" : "오프라인"} 
+                color={agentCoreStatus.isLoading ? "warning" : 
+                       agentCoreStatus.isConnected ? "success" : "error"} 
                 size="small" 
                 sx={{ ml: 'auto' }} 
               />
             </Box>
+
+            {/* AgentCore 연결 오류 알림 */}
+            {agentCoreStatus.error && (
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                  <Typography variant="body2">
+                    AgentCore 연결 오류: {agentCoreStatus.error}
+                  </Typography>
+                </Alert>
+              </Box>
+            )}
 
             {/* 채팅 메시지 영역 */}
             <Box sx={{ 

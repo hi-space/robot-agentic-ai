@@ -1,6 +1,6 @@
 import { Amplify } from 'aws-amplify';
 import { getAWSCredentials, getAWSRegion, AWSCredentials, AWSConfig } from './aws-credentials';
-
+import { getEnvVar } from './env-config';
 /**
  * 환경별 AWS 설정 타입
  */
@@ -74,22 +74,22 @@ export function getCurrentEnvironment(): Environment {
 /**
  * 환경별 AWS 설정을 가져오는 함수
  * @param environment - 환경 (기본값: 현재 환경)
- * @returns AmplifyConfiguration - 환경별 설정
+ * @returns Promise<AmplifyConfiguration> - 환경별 설정
  */
-export function getEnvironmentConfig(environment: Environment = getCurrentEnvironment()): AmplifyConfiguration {
+export async function getEnvironmentConfig(environment: Environment = getCurrentEnvironment()): Promise<AmplifyConfiguration> {
   const baseConfig = {
     Auth: {
       Cognito: {
-        userPoolId: process.env.REACT_APP_USER_POOL_ID || '',
-        userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID || '',
-        region: process.env.REACT_APP_AWS_REGION || 'us-east-1',
-        identityPoolId: process.env.REACT_APP_IDENTITY_POOL_ID,
+        userPoolId: await getEnvVar('REACT_APP_USER_POOL_ID', ''),
+        userPoolClientId: await getEnvVar('REACT_APP_USER_POOL_CLIENT_ID', ''),
+        region: await getEnvVar('REACT_APP_AWS_REGION', 'us-east-1'),
+        identityPoolId: await getEnvVar('REACT_APP_IDENTITY_POOL_ID', ''),
         loginWith: {
           oauth: {
-            domain: process.env.REACT_APP_OAUTH_DOMAIN || '',
+            domain: await getEnvVar('REACT_APP_OAUTH_DOMAIN', ''),
             scopes: ['openid', 'email', 'profile'],
-            redirectSignIn: [process.env.REACT_APP_REDIRECT_SIGN_IN || 'http://localhost:3000/'],
-            redirectSignOut: [process.env.REACT_APP_REDIRECT_SIGN_OUT || 'http://localhost:3000/'],
+            redirectSignIn: [await getEnvVar('REACT_APP_REDIRECT_SIGN_IN', 'http://localhost:3000/')],
+            redirectSignOut: [await getEnvVar('REACT_APP_REDIRECT_SIGN_OUT', 'http://localhost:3000/')],
             responseType: 'code'
           },
           email: true,
@@ -99,8 +99,8 @@ export function getEnvironmentConfig(environment: Environment = getCurrentEnviro
     },
     API: {
       GraphQL: {
-        endpoint: process.env.REACT_APP_GRAPHQL_ENDPOINT || '',
-        region: process.env.REACT_APP_AWS_REGION || 'us-east-1',
+        endpoint: await getEnvVar('REACT_APP_GRAPHQL_ENDPOINT', ''),
+        region: await getEnvVar('REACT_APP_AWS_REGION', 'us-east-1'),
         defaultAuthMode: 'userPool'
       }
     }
@@ -112,8 +112,8 @@ export function getEnvironmentConfig(environment: Environment = getCurrentEnviro
       ...baseConfig,
       Storage: {
         S3: {
-          bucket: process.env.REACT_APP_S3_BUCKET || '',
-          region: process.env.REACT_APP_AWS_REGION || 'us-east-1'
+          bucket: await getEnvVar('REACT_APP_S3_BUCKET', ''),
+          region: await getEnvVar('REACT_APP_AWS_REGION', 'us-east-1')
         }
       }
     };
@@ -125,13 +125,24 @@ export function getEnvironmentConfig(environment: Environment = getCurrentEnviro
 /**
  * Amplify를 초기화하는 함수
  * @param environment - 환경 (기본값: 현재 환경)
- * @returns void
+ * @returns Promise<void>
  */
-export function initializeAmplify(environment: Environment = getCurrentEnvironment()): void {
+export async function initializeAmplify(environment: Environment = getCurrentEnvironment()): Promise<void> {
   try {
-    const config = getEnvironmentConfig(environment);
-    Amplify.configure(config);
-    console.log(`Amplify가 ${environment} 환경으로 초기화되었습니다.`);
+    // Amplify Gen 2에서는 amplify_outputs.json을 동적으로 로드
+    fetch('/amplify_outputs.json')
+      .then(response => response.json())
+      .then(outputs => {
+        Amplify.configure(outputs);
+        console.log(`Amplify가 ${environment} 환경으로 초기화되었습니다.`);
+      })
+      .catch(async error => {
+        console.error('Amplify 설정 로드 실패:', error);
+        // 폴백으로 환경 변수 기반 설정 사용
+        const config = await getEnvironmentConfig(environment);
+        Amplify.configure(config as any);
+        console.log(`Amplify가 ${environment} 환경으로 초기화되었습니다 (폴백 설정).`);
+      });
   } catch (error) {
     console.error('Amplify 초기화 실패:', error);
     throw new Error(`Amplify 초기화 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
@@ -193,9 +204,9 @@ export async function getAWSServiceConfiguration(
 
 /**
  * 환경 변수에서 AWS 설정을 검증하는 함수
- * @returns boolean - 설정 유효성
+ * @returns Promise<boolean> - 설정 유효성
  */
-export function validateEnvironmentVariables(): boolean {
+export async function validateEnvironmentVariables(): Promise<boolean> {
   const requiredVars = [
     'REACT_APP_USER_POOL_ID',
     'REACT_APP_USER_POOL_CLIENT_ID',
@@ -203,14 +214,8 @@ export function validateEnvironmentVariables(): boolean {
     'REACT_APP_GRAPHQL_ENDPOINT'
   ];
 
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
-  
-  if (missingVars.length > 0) {
-    console.error('필수 환경 변수가 누락되었습니다:', missingVars);
-    return false;
-  }
-
-  return true;
+  const { validateRequiredEnvVars } = await import('./env-config');
+  return await validateRequiredEnvVars(requiredVars);
 }
 
 /**
@@ -251,9 +256,9 @@ export async function logAWSConfiguration(includeCredentials: boolean = false): 
  * 설정을 다시 로드하는 함수
  * @param environment - 환경 (기본값: 현재 환경)
  */
-export function reloadConfiguration(environment: Environment = getCurrentEnvironment()): void {
+export async function reloadConfiguration(environment: Environment = getCurrentEnvironment()): Promise<void> {
   try {
-    initializeAmplify(environment);
+    await initializeAmplify(environment);
     console.log('AWS 설정이 다시 로드되었습니다.');
   } catch (error) {
     console.error('설정 다시 로드 실패:', error);

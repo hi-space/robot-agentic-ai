@@ -28,6 +28,9 @@ import {
   initializeAWS,
   initializeAWSForDevelopment,
   initializeAWSForProduction,
+  
+  // 타입
+  type AWSCredentials,
 } from './index';
 
 /**
@@ -106,8 +109,8 @@ export async function example4_EnvironmentConfig() {
     console.log('현재 환경:', currentEnv);
     
     // 환경별 설정 가져오기
-    const devConfig = getEnvironmentConfig('development');
-    const prodConfig = getEnvironmentConfig('production');
+    const devConfig = await getEnvironmentConfig('development');
+    const prodConfig = await getEnvironmentConfig('production');
     
     console.log('개발 환경 설정:', {
       region: devConfig.Auth.Cognito.region,
@@ -226,9 +229,9 @@ export function example9_ReactComponent() {
   
   // React 컴포넌트에서 사용할 수 있는 훅 예제
   const useAWSCredentials = () => {
-    const [credentials, setCredentials] = React.useState(null);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
+  const [credentials, setCredentials] = React.useState<AWSCredentials | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
     
     React.useEffect(() => {
       const fetchCredentials = async () => {
