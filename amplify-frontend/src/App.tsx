@@ -31,7 +31,11 @@ function App() {
         try {
           const { fetchAuthSession } = await import('aws-amplify/auth')
           const session = await fetchAuthSession()
-          
+          console.log('Cognito 인증 상태:', {
+            isAuthenticated: !!session.tokens,
+            hasCredentials: !!session.credentials,
+            identityId: session.identityId
+          })
         } catch (authError) {
           console.log('인증되지 않은 상태 - 로그인 필요')
         }

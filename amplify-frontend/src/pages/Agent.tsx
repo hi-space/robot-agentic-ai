@@ -1,26 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Typography,
   Card,
   CardContent,
   Button,
-  TextField,
-  Avatar,
   List,
   ListItem,
   Chip,
   LinearProgress,
-  IconButton,
-  Paper,
   Divider,
-  CircularProgress,
-  Alert,
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import {
-  Send as SendIcon,
-  SmartToy as RobotIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Error as ErrorIcon,
@@ -38,14 +30,10 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import { invokeAgentCore, processAgentCoreStream, validateEnvironment } from '../lib/BedrockAgentCore'
+import ChatInterface from '../components/ChatInterface'
+import { useStreamingMessages } from '../hooks/useStreamingMessages'
 
-// 타입 정의
-interface ChatMessage {
-  id: string
-  text: string
-  isUser: boolean
-  timestamp: Date
-}
+// 타입 정의 (기존 ChatMessage는 StreamingMessage로 대체)
 
 interface Task {
   id: string
@@ -86,28 +74,9 @@ const StyledButton = styled(Button)(() => ({
   },
 }))
 
-const ChatBubble = styled(Paper, {
-  shouldForwardProp: (prop) => prop !== 'isUser',
-})<{ isUser: boolean }>(({ theme, isUser }) => ({
-  padding: '12px 16px',
-  borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-  backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[50],
-  color: isUser ? theme.palette.primary.contrastText : theme.palette.text.primary,
-  maxWidth: '100%',
-  marginBottom: '8px',
-  wordWrap: 'break-word',
-  border: isUser ? 'none' : `1px solid ${theme.palette.divider}`,
-}))
 
 export default function Dashboard() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      text: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ])
+  const { messages, addMessage, updateMessage, appendToMessage, clearMessages } = useStreamingMessages()
   const [inputText, setInputText] = useState('')
   const [agentCoreStatus, setAgentCoreStatus] = useState<AgentCoreStatus>({
     isConnected: false,
@@ -148,15 +117,16 @@ export default function Dashboard() {
       timestamp: new Date(Date.now() - 20 * 60 * 1000),
     },
   ])
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
+  // 초기 메시지 추가
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    if (messages.length === 0) {
+      addMessage({
+        type: 'chunk',
+        data: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
+        isUser: false,
+      })
+    }
+  }, [messages.length]) // addMessage 의존성 제거
 
   // AgentCore 연결 상태 확인
   useEffect(() => {
@@ -189,36 +159,23 @@ export default function Dashboard() {
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return
 
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: text.trim(),
+    // 사용자 메시지 추가
+    const userMessageId = addMessage({
+      type: 'chunk',
+      data: text.trim(),
       isUser: true,
-      timestamp: new Date(),
-    }
-
-    setMessages(prev => [...prev, newMessage])
+    })
     setInputText('')
 
     // AgentCore 연결 상태 확인
     if (!agentCoreStatus.isConnected) {
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: 'AgentCore에 연결할 수 없습니다. 환경 설정을 확인해주세요.',
+      addMessage({
+        type: 'error',
+        error: 'AgentCore에 연결할 수 없습니다. 환경 설정을 확인해주세요.',
         isUser: false,
-        timestamp: new Date(),
-      }
-      setMessages(prev => [...prev, errorMessage])
+      })
       return
     }
-
-    // 로딩 메시지 추가
-    const loadingMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      text: 'AI가 응답을 생성하고 있습니다...',
-      isUser: false,
-      timestamp: new Date(),
-    }
-    setMessages(prev => [...prev, loadingMessage])
 
     try {
       // AgentCore 호출
@@ -229,79 +186,106 @@ export default function Dashboard() {
         setCurrentSessionId(`session-${Date.now()}`)
       }
 
-      let fullResponse = ''
       let isFirstChunk = true
+      let currentMessageId = ''
+      let lastMessageType: string | null = null
 
       await processAgentCoreStream(
         stream,
         // onChunk: 스트리밍 텍스트 처리
         (chunk: string) => {
           if (isFirstChunk) {
-            // 첫 번째 청크가 오면 로딩 메시지를 실제 응답으로 교체
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === loadingMessage.id 
-                  ? { ...msg, text: chunk }
-                  : msg
-              )
-            )
+            // 첫 번째 청크가 오면 새 메시지 생성
+            currentMessageId = addMessage({
+              type: 'chunk',
+              data: chunk,
+              isUser: false,
+            })
+            lastMessageType = 'chunk'
             isFirstChunk = false
           } else {
             // 이후 청크들은 기존 메시지에 추가
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === loadingMessage.id 
-                  ? { ...msg, text: msg.text + chunk }
-                  : msg
-              )
-            )
+            appendToMessage(currentMessageId, chunk)
           }
-          fullResponse += chunk
         },
         // onToolUse: 도구 사용 정보 처리
         (toolName: string, toolInput: any) => {
-          console.log(`도구 사용: ${toolName}`, toolInput)
+          console.log('Tool use received:', { toolName, toolInput, lastMessageType })
+          if (lastMessageType === 'tool_use') {
+            // 이전 메시지가 tool_use 타입이면 tool_input에 텍스트 추가
+            const currentMessage = messages.find(msg => msg.id === currentMessageId)
+            if (currentMessage) {
+              const currentInput = currentMessage.tool_input || ''
+              const newInput = typeof toolInput === 'string' 
+                ? currentInput + toolInput 
+                : toolInput
+              console.log('Updating existing tool_use message:', { currentMessageId, newInput })
+              updateMessage(currentMessageId, {
+                tool_name: toolName,
+                tool_input: newInput,
+              })
+            }
+          } else {
+            // 새로운 tool_use 메시지 생성
+            const toolMessageId = addMessage({
+              type: 'tool_use',
+              tool_name: toolName,
+              tool_input: toolInput,
+              isUser: false,
+            })
+            console.log('Created new tool_use message:', { toolMessageId, toolName, toolInput })
+            currentMessageId = toolMessageId
+            lastMessageType = 'tool_use'
+          }
         },
         // onReasoning: 추론 과정 처리
         (reasoning: string) => {
-          console.log('AI 추론:', reasoning)
+          if (lastMessageType === 'reasoning') {
+            // 이전 메시지가 reasoning 타입이면 기존 메시지에 추가
+            const currentMessage = messages.find(msg => msg.id === currentMessageId)
+            if (currentMessage) {
+              updateMessage(currentMessageId, {
+                reasoning_text: (currentMessage.reasoning_text || '') + reasoning,
+              })
+            }
+          } else {
+            // 새로운 reasoning 메시지 생성
+            const reasoningMessageId = addMessage({
+              type: 'reasoning',
+              reasoning_text: reasoning,
+              isUser: false,
+            })
+            currentMessageId = reasoningMessageId
+            lastMessageType = 'reasoning'
+          }
         },
         // onComplete: 최종 응답 처리
         (finalResponse: string) => {
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === loadingMessage.id 
-                ? { ...msg, text: finalResponse }
-                : msg
-            )
-          )
+          updateMessage(currentMessageId, {
+            type: 'complete',
+            data: finalResponse,
+            isComplete: true,
+          })
+          lastMessageType = 'complete'
         },
         // onError: 에러 처리
         (error: string) => {
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === loadingMessage.id 
-                ? { ...msg, text: `오류가 발생했습니다: ${error}` }
-                : msg
-            )
-          )
+          updateMessage(currentMessageId, {
+            type: 'error',
+            error: `오류가 발생했습니다: ${error}`,
+          })
         }
       )
 
     } catch (error) {
       console.error('AgentCore 호출 오류:', error)
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === loadingMessage.id 
-            ? { 
-                ...msg, 
-                text: `AgentCore 호출 중 오류가 발생했습니다: ${
-                  error instanceof Error ? error.message : '알 수 없는 오류'
-                }` 
-              }
-            : msg
-        )
-      )
+      addMessage({
+        type: 'error',
+        error: `AgentCore 호출 중 오류가 발생했습니다: ${
+          error instanceof Error ? error.message : '알 수 없는 오류'
+        }`,
+        isUser: false,
+      })
     }
   }
 
@@ -310,14 +294,8 @@ export default function Dashboard() {
   }
 
   const handleResetChat = () => {
-    setMessages([
-      {
-        id: '1',
-        text: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
-        isUser: false,
-        timestamp: new Date(),
-      },
-    ])
+    clearMessages()
+    // useEffect에서 자동으로 초기 메시지가 추가되므로 여기서는 추가하지 않음
   }
 
   const getStatusIcon = (status: Task['status']) => {
@@ -512,151 +490,14 @@ export default function Dashboard() {
           minHeight: 0,
           height: { xs: '400px', md: '100%' }
         }}>
-          <StyledCard sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {/* 채팅 헤더 */}
-            <Box sx={{ 
-              p: 2, 
-              borderBottom: 1, 
-              borderColor: 'divider', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2,
-              bgcolor: 'white',
-              borderRadius: '12px 12px 0 0'
-            }}>
-              <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
-                <RobotIcon />
-              </Avatar>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                  Robot AgenticAI
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  AI를 통해 실시간 로봇 제어 및 모니터링
-                </Typography>
-              </Box>
-              <Chip 
-                label={agentCoreStatus.isLoading ? "연결중..." : 
-                       agentCoreStatus.isConnected ? "온라인" : "오프라인"} 
-                color={agentCoreStatus.isLoading ? "warning" : 
-                       agentCoreStatus.isConnected ? "success" : "error"} 
-                size="small" 
-                sx={{ ml: 'auto' }} 
-              />
-            </Box>
-
-            {/* AgentCore 연결 오류 알림 */}
-            {agentCoreStatus.error && (
-              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Alert severity="error" sx={{ borderRadius: 2 }}>
-                  <Typography variant="body2">
-                    AgentCore 연결 오류: {agentCoreStatus.error}
-                  </Typography>
-                </Alert>
-              </Box>
-            )}
-
-            {/* 채팅 메시지 영역 */}
-            <Box sx={{ 
-              flex: 1, 
-              p: 2, 
-              overflow: 'auto', 
-              minHeight: 0,
-              bgcolor: 'grey.50'
-            }}>
-              {messages.map((message) => (
-                <Box
-                  key={message.id}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: message.isUser ? 'flex-end' : 'flex-start',
-                    mb: 2,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, maxWidth: '85%' }}>
-                    {!message.isUser && (
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                        <RobotIcon />
-                      </Avatar>
-                    )}
-                    <Box>
-                      <ChatBubble isUser={message.isUser}>
-                        <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
-                          {message.text}
-                        </Typography>
-                      </ChatBubble>
-                      <Typography 
-                        variant="caption" 
-                        color="text.secondary" 
-                        sx={{ 
-                          ml: message.isUser ? 0 : 1,
-                          mr: message.isUser ? 1 : 0,
-                          display: 'block',
-                          mt: 0.5
-                        }}
-                      >
-                        {formatTime(message.timestamp)}
-                      </Typography>
-                    </Box>
-                    {/* {message.isUser && (
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'grey.600' }}>
-                        <PersonIcon />
-                      </Avatar>
-                    )} */}
-                  </Box>
-                </Box>
-              ))}
-              <div ref={messagesEndRef} />
-            </Box>
-
-            {/* 입력 영역 - 패널 하단 고정 */}
-            <Box sx={{ 
-              p: 2, 
-              borderTop: 1, 
-              borderColor: 'divider',
-              bgcolor: 'white',
-              borderRadius: '0 0 12px 12px'
-            }}>
-              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end' }}>
-                <TextField
-                  fullWidth
-                  placeholder="메시지를 입력하세요..."
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSendMessage(inputText)
-                    }
-                  }}
-                  variant="outlined"
-                  size="small"
-                  multiline
-                  maxRows={3}
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': { 
-                      borderRadius: 2,
-                      bgcolor: 'grey.50'
-                    } 
-                  }}
-                />
-                <IconButton
-                  color="primary"
-                  onClick={() => handleSendMessage(inputText)}
-                  disabled={!inputText.trim()}
-                  sx={{ 
-                    bgcolor: 'primary.main', 
-                    color: 'white', 
-                    width: 40,
-                    height: 40,
-                    '&:hover': { bgcolor: 'primary.dark' },
-                    '&:disabled': { bgcolor: 'grey.300' }
-                  }}
-                >
-                  <SendIcon />
-                </IconButton>
-              </Box>
-            </Box>
-          </StyledCard>
+          <ChatInterface
+            messages={messages}
+            inputText={inputText}
+            setInputText={setInputText}
+            onSendMessage={handleSendMessage}
+            onResetChat={handleResetChat}
+            agentCoreStatus={agentCoreStatus}
+          />
         </Box>
 
         {/* 오른쪽 패널 - 작업 상태 */}
