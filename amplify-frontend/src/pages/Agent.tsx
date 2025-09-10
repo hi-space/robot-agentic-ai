@@ -19,7 +19,6 @@ import { styled } from '@mui/material/styles'
 import {
   Send as SendIcon,
   SmartToy as RobotIcon,
-  Person as PersonIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Error as ErrorIcon,
@@ -34,6 +33,7 @@ import {
   Visibility as VisibilityIcon,
   Summarize as SummarizeIcon,
   Home as HomeIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material'
 
 // 타입 정의
@@ -82,7 +82,7 @@ const ChatBubble = styled(Paper)<{ isUser: boolean }>(({ theme, isUser }) => ({
   borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
   backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[50],
   color: isUser ? theme.palette.primary.contrastText : theme.palette.text.primary,
-  maxWidth: '85%',
+  maxWidth: '100%',
   marginBottom: '8px',
   wordWrap: 'break-word',
   border: isUser ? 'none' : `1px solid ${theme.palette.divider}`,
@@ -179,6 +179,17 @@ export default function Dashboard() {
     handleSendMessage(command)
   }
 
+  const handleResetChat = () => {
+    setMessages([
+      {
+        id: '1',
+        text: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
+        isUser: false,
+        timestamp: new Date(),
+      },
+    ])
+  }
+
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'completed':
@@ -249,6 +260,32 @@ export default function Dashboard() {
           height: { xs: 'auto', md: '100%' },
           flex: { xs: '0 0 auto', md: '0 0 280px' }
         }}>
+          {/* 대화 리셋 버튼 */}
+          <StyledCard sx={{ flex: '0 0 auto' }}>
+            <CardContent sx={{ p: 2 }}>
+              <StyledButton
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                startIcon={<RefreshIcon />}
+                onClick={handleResetChat}
+                sx={{ 
+                  fontSize: '0.875rem', 
+                  py: 1.5,
+                  borderColor: 'error.main',
+                  color: 'error.main',
+                  '&:hover': {
+                    borderColor: 'error.dark',
+                    backgroundColor: 'error.light',
+                    color: 'error.dark'
+                  }
+                }}
+              >
+                대화내용 리셋
+              </StyledButton>
+            </CardContent>
+          </StyledCard>
+
           {/* 로봇 제어 패널 */}
           <StyledCard sx={{ flex: '0 0 auto' }}>
             <CardContent sx={{ p: 2 }}>
@@ -362,10 +399,10 @@ export default function Dashboard() {
               </Avatar>
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                  AI 어시스턴트
+                  Robot AgenticAI
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  실시간 로봇 제어 및 모니터링
+                  AI를 통해 실시간 로봇 제어 및 모니터링
                 </Typography>
               </Box>
               <Chip 
@@ -418,11 +455,11 @@ export default function Dashboard() {
                         {formatTime(message.timestamp)}
                       </Typography>
                     </Box>
-                    {message.isUser && (
+                    {/* {message.isUser && (
                       <Avatar sx={{ width: 32, height: 32, bgcolor: 'grey.600' }}>
                         <PersonIcon />
                       </Avatar>
-                    )}
+                    )} */}
                   </Box>
                 </Box>
               ))}

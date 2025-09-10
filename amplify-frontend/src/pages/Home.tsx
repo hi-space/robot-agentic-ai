@@ -50,6 +50,18 @@ export default function Home() {
           borderRadius: 2,
         }}
       >
+        <Box
+          component="img"
+          src="/logo.png"
+          alt="RoboGuard AgenticAI Logo"
+          sx={{
+            width: 192,
+            height: 192,
+            mr: 2,
+            borderRadius: '8px',
+            objectFit: 'cover'
+          }}
+        />
         <Typography
           variant="h2"
           component="h1"

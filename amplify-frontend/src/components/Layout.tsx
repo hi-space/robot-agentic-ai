@@ -29,7 +29,7 @@ const StyledTabs = styled(Tabs)(() => ({
 
 const navigation = [
   { name: '홈', href: '/', icon: HomeIcon },
-  { name: 'Agent', href: '/agent', icon: AgentIcon },
+  { name: '에이전트', href: '/agent', icon: AgentIcon },
   { name: '대시보드', href: '/dashboard', icon: DashboardIcon },
 ]
 
@@ -47,6 +47,18 @@ export default function Layout({ children }: LayoutProps) {
       {/* Navigation */}
       <AppBar position="static" color="default" elevation={1}>
         <Toolbar>
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="RoboGuard AgenticAI Logo"
+            sx={{
+              width: 40,
+              height: 40,
+              mr: 2,
+              borderRadius: '8px',
+              objectFit: 'cover'
+            }}
+          />
           <Typography
             variant="h6"
             component="div"
