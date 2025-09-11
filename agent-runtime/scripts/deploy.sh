@@ -59,6 +59,17 @@ load_config() {
     print_status "Configuration loaded from $config_file"
     print_status "AWS Region: $AWS_REGION"
     print_status "Gateway URL: $GATEWAY_URL"
+    
+    # Validate required configuration
+    if [[ -z "$GATEWAY_URL" ]]; then
+        print_error "GATEWAY_URL is not configured in config.json"
+        exit 1
+    fi
+    
+    if [[ -z "$COGNITO_CLIENT_ID" ]]; then
+        print_error "COGNITO_CLIENT_ID is not configured in config.json"
+        exit 1
+    fi
 }
 
 # Function to check prerequisites
@@ -133,20 +144,25 @@ launch_agent() {
     print_status "Launching Bedrock AgentCore Runtime..."
     
     # Export environment variables for the runtime
-    export GATEWAY_URL
+    # Note: GATEWAY_URL and BEARER_TOKEN are now loaded from config.json
     export COGNITO_CLIENT_ID
     export COGNITO_USERNAME
     export COGNITO_PASSWORD
     export SECRET_NAME
-    export BEARER_TOKEN
     
-    # Launch the agent
+    # Launch the agent with environment variables
     print_status "Launching with environment variables:"
-    print_status "  GATEWAY_URL=$GATEWAY_URL"
     print_status "  COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID"
     print_status "  COGNITO_USERNAME=$COGNITO_USERNAME"
     print_status "  SECRET_NAME=$SECRET_NAME"
+    print_status "  (GATEWAY_URL and BEARER_TOKEN will be loaded from config.json)"
     
+    # Launch with explicit environment variable passing
+    # Note: GATEWAY_URL and BEARER_TOKEN are now loaded from config.json
+    COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
+    COGNITO_USERNAME="$COGNITO_USERNAME" \
+    COGNITO_PASSWORD="$COGNITO_PASSWORD" \
+    SECRET_NAME="$SECRET_NAME" \
     agentcore launch
     
     print_success "Agent launch initiated"
