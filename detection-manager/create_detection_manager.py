@@ -179,7 +179,7 @@ def create_lambda_function_policy(lambda_function_name):
                     "iot:DisableTopicRule"
                 ],
                 "Resource": [
-                    f"arn:aws:iot:{region}:{accountId}:rule/robo_feedback_rule",
+                    f"arn:aws:iot:{region}:{accountId}:rule/robo_detection_rule",
                     f"arn:aws:iot:{region}:{accountId}:rule/*"
                 ]
             },
@@ -195,7 +195,7 @@ def create_lambda_function_policy(lambda_function_name):
                     "sqs:DeleteMessage"
                 ],
                 "Resource": [
-                    f"arn:aws:sqs:{region}:{accountId}:robo_feedback.fifo"
+                    f"arn:aws:sqs:{region}:{accountId}:robo_detection.fifo"
                 ]
             }
         ]
@@ -581,7 +581,7 @@ def add_lambda_permission_for_iot(lambda_function_name, lambda_function_arn):
             StatementId=statement_id,
             Action='lambda:InvokeFunction',
             Principal='iot.amazonaws.com',
-            SourceArn=f"arn:aws:iot:{region}:{accountId}:rule/robo_feedback_rule"
+            SourceArn=f"arn:aws:iot:{region}:{accountId}:rule/robo_detection_rule"
         )
         print(f"✓ Lambda permission added for IoT Core: {statement_id}")
         return True
@@ -597,8 +597,8 @@ def setup_iot_lambda_trigger(lambda_function_name, lambda_function_arn):
     """Setup IoT Core trigger for Lambda function"""
     try:
         # Create IoT rule
-        rule_name = "robo_feedback_rule"
-        topic_filter = "robo/feedback"
+        rule_name = "robo_detection_rule"
+        topic_filter = "data/edge/firedetected"
         
         if create_iot_rule(rule_name, topic_filter, lambda_function_arn):
             # Add Lambda permission for IoT Core
@@ -613,9 +613,9 @@ def setup_iot_lambda_trigger(lambda_function_name, lambda_function_arn):
         return False
 
 def main():
-    # Create SQS queue named robo_feedback
-    create_sqs_queue("robo_feedback")
-    print(f"✓ SQS queue created successfully: robo_feedback")
+    # Create SQS queue named robo_detection
+    create_sqs_queue("robo_detection")
+    print(f"✓ SQS queue created successfully: robo_detection")
     
     lambda_function_arn = update_lambda_function_arn()
     print(f"lambda_function_arn: {lambda_function_arn}")
