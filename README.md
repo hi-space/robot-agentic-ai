@@ -367,6 +367,10 @@ def test_robo_controller(lambda_function_name, action, message):
         Payload=json.dumps(payload),
     )
     print(f"output: {output}")
+
+action = 'HAPPY'
+message = '오늘은 정말 멋지네요!'
+test_robo_controller(lambda_function_name, action, message)
 ```
 
 이때의 실행 결과는 아래와 같습니다.
