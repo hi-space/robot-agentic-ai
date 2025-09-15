@@ -326,3 +326,50 @@ Message Body: {
   "message": "Hello 1"
 }
 ```
+
+
+## Robot Text to Speech
+
+[robo-polly.py](./robo-polly/robo-polly.py)와 같이 polly를 이용해 text를 speech로 변환합니다. 아래와 같이 출력 포맷으로 mp3, ogg등을 선택할 수 있습니다. 음성은 voiceId로 설정하는데, 'Seoyeon' 또는 'Jihye'를 사용할 수 있습니다.
+
+```python
+polly_client = boto3.client('polly')
+ssml_text = f'<speak><prosody rate="{speed}%">{text}</prosody></speak>'
+response = polly_client.synthesize_speech(
+    Text=ssml_text,
+    TextType='ssml', 
+    Engine='neural', 
+    LanguageCode=langCode, 
+    OutputFormat='mp3', # 'json'|'mp3'|'ogg_vorbis'|'pcm',
+    VoiceId=voiceId
+)
+```
+
+## Robot Direct Controller
+
+Robot 제어는 기본적으로 Agent에 의해 진행이되나, 직접 제어가 필요한 경우를 대비하여 아래와 같은 lambda를 구현합니다. [robot controller](./robo-controller/lambda-robo-controller-for-robo/lambda_function.py)는 lambda를 이용해 action과 message를 설정합니다. 이때 client에서 trigger할 때에는 아래와 같이 수행합니다. 
+
+```python
+def test_robo_controller(lambda_function_name, action, message):
+    payload = {
+        'action': action,
+        'message': message
+    }
+    print(f"payload: {payload}")
+
+    lambda_client = boto3.client(
+        service_name='lambda',
+        region_name=region,
+    )
+
+    output = lambda_client.invoke(
+        FunctionName=lambda_function_name,
+        Payload=json.dumps(payload),
+    )
+    print(f"output: {output}")
+```
+
+이때의 실행 결과는 아래와 같습니다.
+
+<img width="264" height="278" alt="image" src="https://github.com/user-attachments/assets/0a0f41e6-ebe6-403f-9cdb-153dd3afa57d" />
+
