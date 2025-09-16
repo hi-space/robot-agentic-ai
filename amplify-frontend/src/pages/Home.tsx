@@ -17,20 +17,20 @@ import { Link } from 'react-router-dom'
 
 const features = [
   {
-    name: '빠른 개발',
-    description: 'Vite와 React 19를 사용한 최신 개발 환경',
+    name: 'Agentic AI의 상황인식',
+    description: '다중 센서 데이터를 실시간 분석하여 공장 내 위험 상황을 자율적으로 판단하고, 우선순위에 따른 대응 전략을 수립합니다.',
     icon: FlashOnIcon,
     color: 'primary' as const,
   },
   {
-    name: '안전한 인증',
-    description: 'AWS Amplify를 통한 안전한 사용자 인증',
+    name: 'MCP 기반 로봇 제어',
+    description: 'Agentic AI가 분석한 상황 정보를 바탕으로 로봇견에 실시간 제어 신호를 전송합니다.',
     icon: SecurityIcon,
     color: 'success' as const,
   },
   {
-    name: '확장 가능',
-    description: 'TypeScript와 모듈화된 구조로 확장 가능한 아키텍처',
+    name: '지능형 자율 대응',
+    description: 'Agentic AI의 의사결정에 따라 MCP를 통해 위험 요소에 자동으로 대응하는 통합 안전 관리 시스템입니다',
     icon: GroupIcon,
     color: 'secondary' as const,
   },
@@ -53,7 +53,7 @@ export default function Home() {
         <Box
           component="img"
           src="/logo.png"
-          alt="RoboGuard AgenticAI Logo"
+          alt="Agentic RoboDog"
           sx={{
             width: 192,
             height: 192,
@@ -72,10 +72,20 @@ export default function Home() {
             lineHeight: 1.2,
           }}
         >
-          RoboGuard AgenticAI
+          Agentic RoboDog
         </Typography>
         <Typography
-          variant="h6"
+          variant="h3"
+          gutterBottom
+          sx={{
+            fontWeight: 'bold',
+            lineHeight: 1.2,
+          }}
+        >
+          Industrial Safety Monitoring and Control via Agentic AI and MCP
+        </Typography>
+        <Typography
+          variant="h5"
           sx={{
             mb: 4,
             opacity: 0.9,
@@ -83,7 +93,7 @@ export default function Home() {
             mx: 'auto',
           }}
         >
-          Agentic AI와 MCP를 활용한 지능형 로봇 강아지 제어 시스템을 소개합니다. Agent가 상황을 인식하고 판단하여 MCP를 통해 로봇 강아지의 행동을 적절히 제어합니다.
+          Agentic AI와 MCP를 활용한 차세대 공장 안전 관리 솔루션입니다. 지능형 로봇견이 공장 내 위험 요소를 자율적으로 감지하고 대응하며,  IoT 센서 데이터와 실시간 영상 분석을 통해 사전 예방적 안전 관리를 실현합니다. AI 에이전트가 공장 상황을 종합 판단하여 로봇견의 순찰 경로와 대응 방식을 지능적으로 제어하고, 실시간 대시보드를 통해 전체 안전 상황을 통합 모니터링할 수 있습니다.
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button
@@ -118,14 +128,14 @@ export default function Home() {
             gutterBottom
             sx={{ fontWeight: 'bold' }}
           >
-            현대적인 웹 개발을 위한 모든 것
+            Agentic AI 기반 안전 관리 솔루션
           </Typography>
           <Typography
             variant="h6"
             color="text.secondary"
             sx={{ maxWidth: '600px', mx: 'auto' }}
           >
-            최신 기술 스택을 사용하여 빠르고 안전하며 확장 가능한 웹 애플리케이션을 구축하세요.
+            Agentic AI가 실시간 상황을 인식하고 MCP를 통해 로봇견에게 제어 명령을 내리는 시스템
           </Typography>
         </Box>
 
