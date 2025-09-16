@@ -50,7 +50,7 @@ export default function Layout({ children }: LayoutProps) {
           <Box
             component="img"
             src="/logo.png"
-            alt="RoboGuard AgenticAI Logo"
+            alt="Agentic RoboDog Logo"
             sx={{
               width: 40,
               height: 40,
@@ -69,7 +69,7 @@ export default function Layout({ children }: LayoutProps) {
               color: 'primary.main'
             }}
           >
-            RoboGuard AgenticAI
+            Agentic RoboDog
           </Typography>
           
           <Box sx={{ flexGrow: 1 }}>
