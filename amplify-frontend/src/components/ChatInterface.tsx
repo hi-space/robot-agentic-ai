@@ -58,6 +58,7 @@ interface ChatInterfaceProps {
   onSendMessage: (text: string) => void
   onResetChat: () => void
   agentCoreStatus: AgentCoreStatus
+  isDisabled?: boolean
 }
 
 export default function ChatInterface({
@@ -67,6 +68,7 @@ export default function ChatInterface({
   onSendMessage,
   onResetChat,
   agentCoreStatus,
+  isDisabled = false,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -120,6 +122,7 @@ export default function ChatInterface({
         <IconButton
           onClick={onResetChat}
           size="small"
+          disabled={isDisabled}
           sx={{ 
             color: 'error.main',
             '&:hover': {
@@ -171,7 +174,7 @@ export default function ChatInterface({
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end' }}>
           <TextField
             fullWidth
-            placeholder="메시지를 입력하세요..."
+            placeholder={isDisabled ? "AI 응답을 기다리는 중..." : "메시지를 입력하세요..."}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -179,17 +182,18 @@ export default function ChatInterface({
             size="small"
             multiline
             maxRows={3}
+            disabled={isDisabled}
             sx={{ 
               '& .MuiOutlinedInput-root': { 
                 borderRadius: 2,
-                bgcolor: 'grey.50'
+                bgcolor: isDisabled ? 'grey.100' : 'grey.50'
               } 
             }}
           />
           <IconButton
             color="primary"
             onClick={() => onSendMessage(inputText)}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || isDisabled}
             sx={{ 
               bgcolor: 'primary.main', 
               color: 'white', 

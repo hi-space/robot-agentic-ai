@@ -30,10 +30,30 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import { invokeAgentCore, processAgentCoreStream, validateEnvironment } from '../lib/BedrockAgentCore'
+import { invokeRobotControl, mapButtonTextToAction, isRobotControlButton, RobotAction } from '../lib/LambdaClient'
 import ChatInterface from '../components/ChatInterface'
 import { useStreamingMessages } from '../hooks/useStreamingMessages'
+import robotControlMapping from '../config/robotControlButton.json'
 
-// 타입 정의 (기존 ChatMessage는 StreamingMessage로 대체)
+// 아이콘 매핑 함수
+const getIconComponent = (iconName: string) => {
+  const iconMap: { [key: string]: React.ReactElement } = {
+    DirectionsRunIcon: <DirectionsRunIcon />,
+    DirectionsWalkIcon: <DirectionsWalkIcon />,
+    SportsMartialArtsIcon: <SportsMartialArtsIcon />,
+    FavoriteIcon: <FavoriteIcon />,
+    HomeIcon: <HomeIcon />,
+    RefreshIcon: <RefreshIcon />,
+    VisibilityIcon: <VisibilityIcon />,
+    SummarizeIcon: <SummarizeIcon />,
+    FireIcon: <FireIcon />,
+    GasIcon: <GasIcon />,
+    PersonPinIcon: <PersonPinIcon />,
+  }
+  return iconMap[iconName] || <DirectionsRunIcon />
+}
+
+// 타입 정의 
 
 interface Task {
   id: string
@@ -49,15 +69,27 @@ interface AgentCoreStatus {
   error: string | null
 }
 
+interface RobotControlStatus {
+  isExecuting: boolean
+  lastAction: string | null
+  error: string | null
+}
+
+interface AIResponseStatus {
+  isWaiting: boolean
+  isProcessing: boolean
+}
+
 // 스타일드 컴포넌트
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: 12,
   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
   border: `1px solid ${theme.palette.divider}`,
-  transition: 'all 0.2s ease',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
     borderColor: theme.palette.primary.light,
+    transform: 'translateY(-2px)',
   },
 }))
 
@@ -66,11 +98,99 @@ const StyledButton = styled(Button)(() => ({
   textTransform: 'none',
   fontWeight: 500,
   padding: '8px 16px',
-  transition: 'all 0.2s ease',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   fontSize: '0.875rem',
   '&:hover': {
-    transform: 'translateY(-1px)',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    transform: 'translateY(-2px) scale(1.02)',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+  },
+  '&:active': {
+    transform: 'translateY(0) scale(0.98)',
+  },
+}))
+
+// 반응형 컨테이너 스타일
+const ResponsiveContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  height: 'calc(100vh - 64px)',
+  backgroundColor: theme.palette.grey[50],
+  width: '100%',
+  padding: theme.spacing(3),
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(2),
+  },
+  [theme.breakpoints.up('lg')]: {
+    padding: theme.spacing(4),
+  },
+}))
+
+// 반응형 메인 레이아웃
+const MainLayout = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(3),
+  flexGrow: 1,
+  minHeight: 0,
+  height: '100%',
+  margin: '0 auto',
+  width: '100%',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  [theme.breakpoints.up('md')]: {
+    flexDirection: 'row',
+  },
+}))
+
+// 반응형 사이드 패널
+const SidePanel = styled(Box)(({ theme }) => ({
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(2),
+  height: 'auto',
+  flex: '0 0 auto',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  [theme.breakpoints.up('sm')]: {
+    width: '100%',
+  },
+  [theme.breakpoints.up('md')]: {
+    width: '350px',
+    height: '100%',
+    flex: '0 0 350px',
+  },
+  [theme.breakpoints.up('lg')]: {
+    width: '380px',
+    flex: '0 0 380px',
+  },
+  [theme.breakpoints.up('xl')]: {
+    width: '420px',
+    flex: '0 0 420px',
+  },
+}))
+
+// 반응형 채팅 패널
+const ChatPanel = styled(Box)(({ theme }) => ({
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: '100%',
+  minHeight: 0,
+  height: '400px',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  [theme.breakpoints.up('sm')]: {
+    minWidth: '100%',
+    height: '500px',
+  },
+  [theme.breakpoints.up('md')]: {
+    minWidth: '500px',
+    height: '100%',
+  },
+  [theme.breakpoints.up('lg')]: {
+    minWidth: '700px',
+  },
+  [theme.breakpoints.up('xl')]: {
+    minWidth: '900px',
   },
 }))
 
@@ -82,6 +202,15 @@ export default function Dashboard() {
     isConnected: false,
     isLoading: false,
     error: null,
+  })
+  const [robotControlStatus, setRobotControlStatus] = useState<RobotControlStatus>({
+    isExecuting: false,
+    lastAction: null,
+    error: null,
+  })
+  const [aiResponseStatus, setAiResponseStatus] = useState<AIResponseStatus>({
+    isWaiting: false,
+    isProcessing: false,
   })
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [tasks] = useState<Task[]>([
@@ -159,6 +288,12 @@ export default function Dashboard() {
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return
 
+    // AI 응답 대기 상태로 설정
+    setAiResponseStatus({
+      isWaiting: true,
+      isProcessing: false,
+    })
+
     // 사용자 메시지 추가
     const userMessageId = addMessage({
       type: 'chunk',
@@ -169,6 +304,10 @@ export default function Dashboard() {
 
     // AgentCore 연결 상태 확인
     if (!agentCoreStatus.isConnected) {
+      setAiResponseStatus({
+        isWaiting: false,
+        isProcessing: false,
+      })
       addMessage({
         type: 'error',
         error: 'AgentCore에 연결할 수 없습니다. 환경 설정을 확인해주세요.',
@@ -178,6 +317,12 @@ export default function Dashboard() {
     }
 
     try {
+      // AI 응답 처리 시작
+      setAiResponseStatus({
+        isWaiting: false,
+        isProcessing: true,
+      })
+
       // AgentCore 호출
       const stream = await invokeAgentCore(text.trim(), currentSessionId)
       
@@ -267,6 +412,11 @@ export default function Dashboard() {
             isComplete: true,
           })
           lastMessageType = 'complete'
+          // AI 응답 완료
+          setAiResponseStatus({
+            isWaiting: false,
+            isProcessing: false,
+          })
         },
         // onError: 에러 처리
         (error: string) => {
@@ -274,11 +424,20 @@ export default function Dashboard() {
             type: 'error',
             error: `오류가 발생했습니다: ${error}`,
           })
+          // AI 응답 에러
+          setAiResponseStatus({
+            isWaiting: false,
+            isProcessing: false,
+          })
         }
       )
 
     } catch (error) {
       console.error('AgentCore 호출 오류:', error)
+      setAiResponseStatus({
+        isWaiting: false,
+        isProcessing: false,
+      })
       addMessage({
         type: 'error',
         error: `AgentCore 호출 중 오류가 발생했습니다: ${
@@ -289,14 +448,68 @@ export default function Dashboard() {
     }
   }
 
-  const handleButtonClick = (command: string) => {
-    handleSendMessage(command)
+  const handleButtonClick = async (command: string) => {
+    // JSON에서 버튼 정보 찾기
+    const buttonInfo = robotControlMapping.robotControlButtons.find(btn => btn.text === command)
+    
+    if (buttonInfo) {
+      // 로봇 제어 버튼은 Lambda 함수로 직접 제어
+      try {
+        setRobotControlStatus(prev => ({ 
+          ...prev, 
+          isExecuting: true, 
+          error: null,
+          lastAction: command 
+        }))
+        
+        const response = await invokeRobotControl({ 
+          action: buttonInfo.action as RobotAction,
+          message: buttonInfo.message 
+        })
+        
+        if (response.statusCode === 200 && response.body) {
+          addMessage({
+            type: 'chunk',
+            data: buttonInfo.message || `로봇 제어 명령 "${command}"이 성공적으로 실행되었습니다.`,
+            isUser: false,
+          })
+          setRobotControlStatus(prev => ({ 
+            ...prev, 
+            isExecuting: false,
+            error: null 
+          }))
+        } else {
+          throw new Error('로봇 제어 명령 실행에 실패했습니다.')
+        }
+      } catch (error) {
+        console.error('로봇 제어 오류:', error)
+        setRobotControlStatus(prev => ({ 
+          ...prev, 
+          isExecuting: false,
+          error: error instanceof Error ? error.message : '알 수 없는 오류'
+        }))
+        
+        addMessage({
+          type: 'error',
+          error: `로봇 제어 명령 실행 중 오류가 발생했습니다: ${
+            error instanceof Error ? error.message : '알 수 없는 오류'
+          }`,
+          isUser: false,
+        })
+      }
+    } else {
+      // 빠른 명령, 긴급 신고 등은 기존 BedrockAgentCore 방식으로 처리
+      handleSendMessage(command)
+    }
   }
 
   const handleResetChat = () => {
     clearMessages()
     // useEffect에서 자동으로 초기 메시지가 추가되므로 여기서는 추가하지 않음
   }
+
+  // 전체 비활성화 상태 계산
+  const isDisabled = robotControlStatus.isExecuting || aiResponseStatus.isWaiting || aiResponseStatus.isProcessing
 
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
@@ -338,48 +551,29 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: 'calc(100vh - 64px)', 
-      bgcolor: 'grey.50',
-      width: '100%',
-      px: { xs: 2, sm: 3, md: 4 },
-      py: 3
-    }}>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 3, 
-        flexGrow: 1, 
-        minHeight: 0,
-        height: '100%',
-        maxWidth: '2000px',
-        mx: 'auto',
-        width: '100%'
-      }}>
+    <ResponsiveContainer>
+      <MainLayout>
         {/* 왼쪽 패널 - 제어 버튼들 */}
-        <Box sx={{ 
-          width: { xs: '100%', md: '380px' }, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: 2, 
-          height: { xs: 'auto', md: '100%' },
-          flex: { xs: '0 0 auto', md: '0 0 280px' }
-        }}>
+        <SidePanel>
           {/* 대화 리셋 버튼 */}
-          <StyledCard sx={{ flex: '0 0 auto' }}>
+          <StyledCard sx={{ 
+            flex: '0 0 auto',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+            }
+          }}>
             <CardContent sx={{ p: 2 }}>
               <StyledButton
                 variant="outlined"
                 color="secondary"
                 fullWidth
                 startIcon={<RefreshIcon />}
+                disabled={isDisabled}
                 onClick={handleResetChat}
                 sx={{ 
-                  fontSize: '0.875rem', 
-                  py: 1.5,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.9rem' }, 
+                  py: { xs: 1.2, sm: 1.5, md: 1.5 },
+                  minHeight: { xs: '44px', sm: '48px', md: '52px' },
                   borderColor: 'error.main',
                   color: 'error.main',
                   '&:hover': {
@@ -395,28 +589,57 @@ export default function Dashboard() {
           </StyledCard>
 
           {/* 로봇 제어 패널 */}
-          <StyledCard sx={{ flex: '0 0 auto' }}>
+          <StyledCard sx={{ 
+            flex: '0 0 auto',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+            }
+          }}>
             <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                로봇 제어
-              </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                {[
-                  { text: '앉아', icon: <DirectionsRunIcon />, color: 'primary' },
-                  { text: '일어서', icon: <DirectionsWalkIcon />, color: 'primary' },
-                  { text: '뒹굴어', icon: <SportsMartialArtsIcon />, color: 'secondary' },
-                  { text: '춤춰', icon: <SportsMartialArtsIcon />, color: 'success' },
-                  { text: '하트해', icon: <FavoriteIcon />, color: 'error' },
-                  { text: '돌아와', icon: <HomeIcon />, color: 'info' },
-                ].map((button, index) => (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
+                  로봇 제어
+                </Typography>
+                {robotControlStatus.isExecuting && (
+                  <LinearProgress sx={{ width: 60, height: 4, borderRadius: 2 }} />
+                )}
+              </Box>
+              {robotControlStatus.lastAction && (
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontSize: '0.75rem' }}>
+                  마지막 실행: {robotControlStatus.lastAction}
+                </Typography>
+              )}
+              {robotControlStatus.error && (
+                <Typography variant="caption" color="error" sx={{ mb: 1, display: 'block', fontSize: '0.75rem' }}>
+                  오류: {robotControlStatus.error}
+                </Typography>
+              )}
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { 
+                  xs: '1fr', 
+                  sm: '1fr 1fr', 
+                  md: '1fr 1fr',
+                  lg: '1fr 1fr 1fr',
+                  xl: '1fr 1fr 1fr'
+                }, 
+                gap: { xs: 1, sm: 1.5, md: 2 },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}>
+                {robotControlMapping.robotControlButtons.map((button, index) => (
                   <StyledButton
                     key={index}
                     variant="contained"
                     color={button.color as any}
                     fullWidth
-                    startIcon={button.icon}
+                    startIcon={getIconComponent(button.icon)}
+                    disabled={isDisabled}
                     onClick={() => handleButtonClick(button.text)}
-                    sx={{ fontSize: '0.8rem', py: 1.5 }}
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
+                      py: { xs: 1, sm: 1.5, md: 1.5 },
+                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
+                    }}
                   >
                     {button.text}
                   </StyledButton>
@@ -426,7 +649,12 @@ export default function Dashboard() {
           </StyledCard>
 
           {/* 채팅 패널 */}
-          <StyledCard sx={{ flex: '0 0 auto' }}>
+          <StyledCard sx={{ 
+            flex: '0 0 auto',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+            }
+          }}>
             <CardContent sx={{ p: 2 }}>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
                 빠른 명령
@@ -442,8 +670,14 @@ export default function Dashboard() {
                     variant="outlined"
                     fullWidth
                     startIcon={item.icon}
+                    disabled={isDisabled}
                     onClick={() => handleButtonClick(item.text)}
-                    sx={{ fontSize: '0.8rem', textAlign: 'left', py: 1.5 }}
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
+                      textAlign: 'left', 
+                      py: { xs: 1, sm: 1.5, md: 1.5 },
+                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
+                    }}
                   >
                     {item.text}
                   </StyledButton>
@@ -453,7 +687,12 @@ export default function Dashboard() {
           </StyledCard>
 
           {/* 이슈 제기 패널 */}
-          <StyledCard sx={{ flex: '0 0 auto' }}>
+          <StyledCard sx={{ 
+            flex: '0 0 auto',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+            }
+          }}>
             <CardContent sx={{ p: 2 }}>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
                 긴급 신고
@@ -470,8 +709,13 @@ export default function Dashboard() {
                     color={item.color as any}
                     fullWidth
                     startIcon={item.icon}
+                    disabled={isDisabled}
                     onClick={() => handleButtonClick(item.text)}
-                    sx={{ fontSize: '0.8rem', py: 1.5 }}
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
+                      py: { xs: 1, sm: 1.5, md: 1.5 },
+                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
+                    }}
                   >
                     {item.text}
                   </StyledButton>
@@ -479,17 +723,10 @@ export default function Dashboard() {
               </Box>
             </CardContent>
           </StyledCard>
-        </Box>
+        </SidePanel>
 
         {/* 중앙 패널 - 채팅 인터페이스 */}
-        <Box sx={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          minWidth: { xs: '100%', md: '800px' },
-          minHeight: 0,
-          height: { xs: '400px', md: '100%' }
-        }}>
+        <ChatPanel>
           <ChatInterface
             messages={messages}
             inputText={inputText}
@@ -497,19 +734,21 @@ export default function Dashboard() {
             onSendMessage={handleSendMessage}
             onResetChat={handleResetChat}
             agentCoreStatus={agentCoreStatus}
+            isDisabled={isDisabled}
           />
-        </Box>
+        </ChatPanel>
 
         {/* 오른쪽 패널 - 작업 상태 */}
-        <Box sx={{ 
-          width: { xs: '100%', md: '380px' }, 
-          display: 'flex', 
-          flexDirection: 'column',
-          minHeight: 0,
-          height: { xs: 'auto', md: '100%' },
-          flex: { xs: '0 0 auto', md: '0 0 280px' }
-        }}>
-          <StyledCard sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <SidePanel>
+          <StyledCard sx={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: 0,
+            '&:hover': {
+              transform: 'translateY(-4px)',
+            }
+          }}>
             <CardContent sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
                 작업 현황
@@ -517,7 +756,18 @@ export default function Dashboard() {
               <List sx={{ p: 0, flex: 1, overflow: 'auto' }}>
                 {tasks.map((task, index) => (
                   <React.Fragment key={task.id}>
-                    <ListItem sx={{ px: 0, py: 1.5, flexDirection: 'column', alignItems: 'stretch' }}>
+                    <ListItem sx={{ 
+                      px: 0, 
+                      py: 1.5, 
+                      flexDirection: 'column', 
+                      alignItems: 'stretch',
+                      borderRadius: 2,
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                        transform: 'translateX(4px)',
+                      }
+                    }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="body2" sx={{ fontWeight: 500, flexGrow: 1, fontSize: '0.875rem' }}>
                           {task.name}
@@ -570,8 +820,8 @@ export default function Dashboard() {
               </List>
             </CardContent>
           </StyledCard>
-        </Box>
-      </Box>
-    </Box>
+        </SidePanel>
+      </MainLayout>
+    </ResponsiveContainer>
   )
 }

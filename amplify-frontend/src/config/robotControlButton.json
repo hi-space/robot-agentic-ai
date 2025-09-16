@@ -1,0 +1,53 @@
+{
+  "robotControlButtons": [
+    {
+      "text": "앉아",
+      "action": "NEUTRAL",
+      "message": "네, 앉겠습니다!",
+      "icon": "DirectionsRunIcon",
+      "color": "primary"
+    },
+    {
+      "text": "일어서",
+      "action": "HAPPY",
+      "message": "좋아요! 일어서겠습니다!",
+      "icon": "DirectionsWalkIcon",
+      "color": "primary"
+    },
+    {
+      "text": "뒹굴어",
+      "action": "SAD",
+      "message": "굴러볼게요.",
+      "icon": "SportsMartialArtsIcon",
+      "color": "secondary"
+    },
+    {
+      "text": "춤춰",
+      "action": "HAPPY",
+      "message": "와! 춤을 춰볼게요! 즐거워요!",
+      "icon": "SportsMartialArtsIcon",
+      "color": "success"
+    },
+    {
+      "text": "하트해",
+      "action": "HAPPY",
+      "message": "사랑해요! 하트를 보여드릴게요!",
+      "icon": "FavoriteIcon",
+      "color": "error"
+    },
+    {
+      "text": "돌아와",
+      "action": "NEUTRAL",
+      "message": "네, 원래 자리로 돌아가겠습니다.",
+      "icon": "HomeIcon",
+      "color": "info"
+    },
+    {
+        "text": "점프해",
+        "action": "HAPPY",
+        "message": "점프! 점프! 신나게 뛰어볼게요!",
+        "icon": "DirectionsRunIcon",
+        "color": "warning"
+    }
+  ]
+}
