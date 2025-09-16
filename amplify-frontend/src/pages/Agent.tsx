@@ -453,6 +453,13 @@ export default function Dashboard() {
     const buttonInfo = robotControlMapping.robotControlButtons.find(btn => btn.text === command)
     
     if (buttonInfo) {
+      // 사용자 메시지를 채팅창에 먼저 추가
+      addMessage({
+        type: 'chunk',
+        data: command,
+        isUser: true,
+      })
+      
       // 로봇 제어 버튼은 Lambda 함수로 직접 제어
       try {
         setRobotControlStatus(prev => ({ 
