@@ -280,7 +280,7 @@ async def main():
                 # Test retrieve function
                 print("\n=== Testing retrieve function ===")
                 params = {
-                    "action": "HAPPY"
+                    "action": "행복해"
                 }
                 
                 try:

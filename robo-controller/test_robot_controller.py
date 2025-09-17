@@ -13,8 +13,8 @@ lambda_function_name = config['lambda_function_name']
 def test_robo_controller(lambda_function_name, action, message):
     try:
         payload = {
-            'action': 'HAPPY',
-            'message': 'Hello, I am happy'
+            'action': action,
+            'message': message
         }
         print(f"payload: {payload}")
 
@@ -35,8 +35,9 @@ def test_robo_controller(lambda_function_name, action, message):
 
 def main():
 
-    action = 'HAPPY'
-    message = '오늘은 정말 멋지네요!'
+    action = 'detected'
+    # message = '오늘은 정말 멋지네요!'
+    message = ''
     print(f"action: {action}, message: {message}")
     test_robo_controller(lambda_function_name, action, message)
 

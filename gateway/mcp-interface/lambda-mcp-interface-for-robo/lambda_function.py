@@ -17,43 +17,53 @@ def command_robot(action: str, message: str) -> str:
         print('message: ', message)
         say = message
     
-    show = move = seq = ""
-    if action == "HAPPY":
-        show = 'HAPPY'
-        move = 'seq'
-        seq = ["MOVE_FORWARD", "SIT", "MOVE_BACKWARD"]
-    elif action == "NEUTRAL":
-        show = 'NEUTRAL'
-        move = 'seq'
-        seq = ["TURN_LEFT", "SIT", "TURN_RIGHT"]
-    elif action == "SAD":
-        show = 'SAD'
-        move = 'seq'
-        seq = ["MOVE_BACKWARD", "SIT", "MOVE_FORWARD"]
-    elif action == "ANGRY":
-        show = 'ANGRY'
-        move = 'seq'
-        seq = ["LOOK_LEFT","LOOK_RIGHT", "LOOK_LEFT", "LOOK_RIGHT"]
+    move = ""
+    if action == "탐지" or action == "detected":
+        move = ['detected']
+    elif action == "from1to2":
+        move = ['from1to2']
+    elif action == "from3to0":
+        move = ['from3to0']
+    elif action == "from0to1":
+        move = ['from0to1']
+    elif action == "normal":
+        move = ['normal']
+    elif action == "heart":
+        move = ['heart']
+    elif action == "stretch":
+        move = ['stretch']
+    elif action == "scrape":
+        move = ['scrape']
+    elif action == "dance1":
+        move = ['dance1']
+    elif action == "dance2":
+        move = ['dance2']
+    elif action == "행복해":
+        move = ['heart']
+    elif action == "피곤해":
+        move = ['stretch']
+    elif action == "반가워":
+        move = ['heart']
+    elif action == "춤춰봐":
+        move = ['dance1']
+    elif action == "앉아":
+        move = ['sit']
+    elif action == "일어서":
+        move = ['stand']
     else:
-        show = 'HAPPY'
-        move = 'seq'
-        seq = ["MOVE_FORWARD", "SIT", "MOVE_BACKWARD"]
+        move = [action]
 
     if say:
         payload = json.dumps({
-            "show": show,  
-            "move": move, 
-            "seq": seq,
-            "say": say, 
+            "move": move,
+            "say": say
         })
     else:
         payload = json.dumps({
-            "show": show,  
-            "move": move, 
-            "seq": seq
+            "move": move
         })
                         
-    topic = f"robot/control"
+    topic = f"robot/control"  # for testing
     print('topic: ', topic)
 
     try:         
