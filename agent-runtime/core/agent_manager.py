@@ -5,8 +5,7 @@ from strands.models import BedrockModel
 from config.config import Config
 from core.mcp_manager import MCPServerManager
 from prompts.prompt import ORCHESTRATOR_PROMPT
-from tools.get_robot_status import get_robot_status
-from tools.observer_env import observe_env
+from tools.observer_env_agent import observe_env_agent
 
 
 class AgentManager:
@@ -30,8 +29,8 @@ class AgentManager:
                 self.logger.error("Failed to load tools from MCP server")
                 return False
             
-            # Load local tools
-            local_tools = [get_robot_status, observe_env]
+            # Load local tools (only observe_env, other tools are handled internally)
+            local_tools = [observe_env_agent]
             
             # Combine MCP tools and local tools
             all_tools = mcp_tools + local_tools

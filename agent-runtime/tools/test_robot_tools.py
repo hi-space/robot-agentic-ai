@@ -21,14 +21,14 @@ spec = importlib.util.spec_from_file_location("robot_tools_module", robot_tools_
 robot_tools_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(robot_tools_module)
 
-def test_sqs_tool():
-    """Test the get_robot_feedback tool"""
-    print("Testing SQS Robot Feedback Tool")
+def test_tool(tool_name, tool_function):
+    """Generic test function for any robot tool"""
+    print(f"Testing {tool_name}")
     print("=" * 50)
     
     try:
         # Call the tool
-        result = robot_tools_module.get_robot_feedback()
+        result = tool_function()
         
         # Print the result
         print(f"Tool execution time: {datetime.now().isoformat()}")
@@ -43,7 +43,8 @@ def test_sqs_tool():
             elif "status" in result:
                 print(f"\n✅ Tool executed successfully with status: {result['status']}")
                 if result['status'] == "success":
-                    print(f"   - Retrieved {result.get('message_count', 0)} robot feedback messages")
+                    message_count = result.get('message_count', 0)
+                    print(f"   - Retrieved {message_count} messages")
                 elif result['status'] == "no_messages":
                     print("   - No messages available in the queue (this is normal if queue is empty)")
                 return True
@@ -60,13 +61,27 @@ def test_sqs_tool():
         traceback.print_exc()
         return False
 
+def test_robot_feedback():
+    """Test the get_robot_feedback tool"""
+    return test_tool("Robot Feedback Tool", robot_tools_module.get_robot_feedback)
+
+def test_robot_detection():
+    """Test the get_robot_detection tool"""
+    return test_tool("Robot Detection Tool", robot_tools_module.get_robot_detection)
+
+def test_robot_gesture():
+    """Test the get_robot_gesture tool"""
+    return test_tool("Robot Gesture Tool", robot_tools_module.get_robot_gesture)
+
 if __name__ == "__main__":
-    print("SQS Robot Feedback Tool Test")
+    print("Robot Tools Test Suite")
+    print("=" * 50)
+    print("Testing all robot tools: get_robot_feedback, get_robot_detection, get_robot_gesture")
     print("=" * 50)
     
     # Check if config.json exists
     parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    config_path = os.path.join(parent_dir, 'config.json')
+    config_path = os.path.join(parent_dir, 'config', 'config.json')
     if not os.path.exists(config_path):
         print(f"❌ config.json not found at {config_path}")
         print("Please ensure config.json exists with proper AWS configuration")
@@ -84,11 +99,43 @@ if __name__ == "__main__":
         print(f"❌ Error loading config: {e}")
         sys.exit(1)
     
-    print("\nTesting tool execution...")
-    success = test_sqs_tool()
+    # Define all tests to run
+    tests = [
+        ("Robot Feedback Tool", test_robot_feedback),
+        ("Robot Detection Tool", test_robot_detection),
+        ("Robot Gesture Tool", test_robot_gesture)
+    ]
     
-    if success:
-        print("\n🎉 Test completed successfully!")
+    # Run all tests
+    print(f"\n🚀 Running {len(tests)} tests...")
+    print("=" * 50)
+    
+    test_results = []
+    for test_name, test_function in tests:
+        print(f"\n📋 Starting {test_name}...")
+        success = test_function()
+        test_results.append((test_name, success))
+        print(f"\n{'✅ PASSED' if success else '❌ FAILED'}: {test_name}")
+        print("-" * 50)
+    
+    # Summary
+    print("\n" + "=" * 50)
+    print("📊 TEST SUMMARY")
+    print("=" * 50)
+    
+    passed = sum(1 for _, success in test_results if success)
+    total = len(test_results)
+    
+    for test_name, success in test_results:
+        status = "✅ PASSED" if success else "❌ FAILED"
+        print(f"{status}: {test_name}")
+    
+    print(f"\n📈 Results: {passed}/{total} tests passed")
+    
+    if passed == total:
+        print("\n🎉 All tests completed successfully!")
+        print("All robot tools are working correctly.")
     else:
-        print("\n💥 Test failed!")
+        print(f"\n💥 {total - passed} test(s) failed!")
+        print("Please check the error messages above for details.")
         sys.exit(1)

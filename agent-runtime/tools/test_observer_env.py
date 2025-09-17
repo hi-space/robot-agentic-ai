@@ -12,7 +12,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from tools.observer_env import observe_env
+from tools.observer_env_agent import observe_env_agent
 
 
 def test_observe_env():

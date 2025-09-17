@@ -1,17 +1,19 @@
 from strands import Agent, tool
 from utils.s3_util import download_image_from_s3
+from tools.robot_tools import get_robot_feedback, get_robot_detection, get_robot_gesture
+from prompts.prompt import OBSERVER_ENV_AGENT_PROMPT
 
 
 @tool
-def observe_env(image_path: str, description: str) -> str:
-    """현재 로봇이 바라보고 있는 영상과 인식 정보를 바탕으로 현장 환경을 관찰하고 분석합니다.
+def observe_env_agent(image_path: str, description: str) -> str:
+    """현재 로봇이 바라보고 있는 영상과 로봇의 상태 정보를 객관적으로 수집합니다.
     
     Args:
         image_path: 분석할 이미지의 S3 경로
         description: 이미지에 대한 상황 설명
 
     Returns:
-        환경 관찰 및 분석 결과
+        로봇 상태 정보와 환경 관찰 데이터 (객관적 정보만)
     """
     try:
         # S3에서 이미지 다운로드
@@ -19,13 +21,8 @@ def observe_env(image_path: str, description: str) -> str:
         
         agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            system_prompt="""당신은 환경 관찰 전문가입니다. 주어진 이미지와 설명을 바탕으로 현장 상황을 종합적으로 분석하고 보고하세요.
-                    다음 사항들을 포함하여 관찰 결과를 제공하세요:
-                    - 안전성 상태 및 잠재적 위험 요소
-                    - 작업 환경의 전반적인 상태
-                    - 장비나 시설의 상태
-                    - 이상 징후나 특이사항
-                    - 개선이 필요한 부분이나 권장사항"""
+            tools=[get_robot_feedback, get_robot_detection, get_robot_gesture],
+            system_prompt=OBSERVER_ENV_AGENT_PROMPT
         )
 
         response = agent([
