@@ -4,6 +4,7 @@ import json
 import boto3
 import os
 from typing import Optional, List, Dict, Any
+from utils.s3_util import download_image_from_s3
 
 
 def _get_fifo_messages(queue_name: str, config: dict) -> Dict[str, Any]:
@@ -123,7 +124,7 @@ def _get_fifo_messages(queue_name: str, config: dict) -> Dict[str, Any]:
 
 @tool
 def get_robot_feedback():
-    """Get the latest robot feedback information from robo_feedback.fifo.
+    """Get the latest robot feedback information.
     This tool retrieves feedback about robot actions and command execution results.
 
     Args:
@@ -164,13 +165,16 @@ def get_robot_feedback():
 
 @tool
 def get_robot_detection():
-    """Get the latest robot detection information from robo_detection.fifo.
+    """Get the latest robot detection information.
+    This tool retrieves emergency situation detection data including emergency_situation, explosion, fire, person_down 
+    and the S3 path of the detected image file.
 
     Args:
         None
 
     Returns:
-        A list of robot detection messages with timestamps and detection details.
+        A list of robot detection messages with timestamps, detection details, and S3 image paths.
+        Detection types include: emergency_situation, explosion, fire, person_down
     """
     try:
         # Load configuration
@@ -204,13 +208,16 @@ def get_robot_detection():
 
 @tool
 def get_robot_gesture():
-    """Get the latest robot gesture information from robo_gesture.fifo.
+    """Get the latest robot gesture information.
+    This tool retrieves human gesture recognition data including what gesture the detected person is making
+    and the S3 path of the gesture image file.
 
     Args:
         None
 
     Returns:
-        A list of robot gesture messages with timestamps and gesture details.
+        A list of robot gesture messages with timestamps, gesture details, and S3 image paths.
+        Contains information about recognized human gestures and corresponding image files.
     """
     try:
         # Load configuration
@@ -240,3 +247,103 @@ def get_robot_gesture():
             "error": f"Unexpected error in get_robot_gesture: {str(e)}",
             "timestamp": datetime.now().isoformat()
         }
+
+
+@tool
+def analyze_robot_image(image_path: str) -> str:
+    """Analyze a specific robot image from S3 using Bedrock Converse API.
+    
+    Args:
+        image_path: S3 path to the image to analyze
+        
+    Returns:
+        Analysis result of the image
+    """
+    try:        
+        # Download image from S3
+        image_bytes = download_image_from_s3(image_path)
+                
+        # Initialize Bedrock client
+        bedrock = boto3.client('bedrock-runtime', region_name='us-west-2')
+        
+        # Prepare the message for Bedrock Converse API
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "text": "보이는 이미지에 대한 내용을 설명하세요. 감지된 객체, 환경의 물리적 상태, 시각적으로 확인되는 요소들을 객관적으로 분석해주세요."
+                    },
+                    {
+                        "image": {
+                            "format": "png",
+                            "source": {
+                                "bytes": image_bytes
+                            }
+                        }
+                    }
+                ]
+            }
+        ]
+        
+        # Call Bedrock Converse API
+        response = bedrock.converse(
+            modelId="us.amazon.nova-lite-v1:0",
+            messages=messages,
+        )
+        
+        # Extract the response text
+        if 'output' in response and 'message' in response['output']:
+            content = response['output']['message']['content']
+            if isinstance(content, list) and len(content) > 0:
+                return content[0]['text']
+            elif isinstance(content, str):
+                return content
+        
+        return "이미지 분석 결과를 가져올 수 없습니다."
+        
+    except Exception as e:
+        return f"Error analyzing image {image_path}: {str(e)}"
+
+
+
+def extract_image_path_from_data(data_json: str, data_type: str = "detection") -> str:
+    """Extract S3 image path from detection or gesture data JSON string.
+    
+    Args:
+        data_json: JSON string containing detection or gesture data
+        data_type: Type of data ("detection" or "gesture")
+        
+    Returns:
+        S3 image path if found, error message otherwise
+    """
+    try:
+        import json
+        data = json.loads(data_json)
+        
+        # Determine the message key and folder based on data type
+        message_key = f"robot_{data_type}_messages"
+        folder = "detected" if data_type == "detection" else "gestures"
+        
+        if message_key in data:
+            for message in data[message_key]:
+                message_body = message.get("message_body", {})
+                if isinstance(message_body, dict) and "filename" in message_body:
+                    # Load configuration to get bucket name
+                    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'config.json')
+                    try:
+                        with open(config_path, 'r') as f:
+                            config = json.load(f)
+                        bucket_name = config.get('s3_bucket_name', 'industry-robot-detected-images')
+                    except:
+                        bucket_name = 'industry-robot-detected-images'  # fallback
+                    
+                    # Construct S3 path directly
+                    filename = message_body["filename"]
+                    return f"s3://{bucket_name}/{folder}/{filename}"
+        
+        return f"No image path found in {data_type} data"
+    except Exception as e:
+        return f"Error extracting image path from {data_type} data: {str(e)}"
+
+

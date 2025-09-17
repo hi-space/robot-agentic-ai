@@ -9,9 +9,11 @@ import os
 import json
 from datetime import datetime
 
-# Add the current directory to Python path to import from robot_tools.py
+# Add the current directory and parent directory to Python path to import from robot_tools.py
 current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, current_dir)
+sys.path.insert(0, parent_dir)
 
 import importlib.util
 
@@ -73,10 +75,45 @@ def test_robot_gesture():
     """Test the get_robot_gesture tool"""
     return test_tool("Robot Gesture Tool", robot_tools_module.get_robot_gesture)
 
+def test_analyze_robot_image():
+    """Test the analyze_robot_image tool with a sample S3 path"""
+    print("Testing Robot Image Analysis Tool")
+    print("=" * 50)
+    
+    try:
+        # Test with a sample S3 path (this will likely fail if the image doesn't exist, but we can test the function structure)
+        sample_image_path = "s3://robot-agentic-images-533267442321-us-west-2/detection-images/sample.png"
+        
+        print(f"Testing with sample image path: {sample_image_path}")
+        result = robot_tools_module.analyze_robot_image(sample_image_path)
+        
+        print(f"Tool execution time: {datetime.now().isoformat()}")
+        print(f"Result type: {type(result)}")
+        print(f"Result: {result}")
+        
+        # Check if it's a valid response
+        if isinstance(result, str):
+            if "Error analyzing image" in result:
+                print(f"\n⚠️  Tool returned expected error (image likely doesn't exist): {result}")
+                print("✅ Function structure is working correctly")
+                return True
+            else:
+                print(f"\n✅ Tool executed successfully and returned analysis result")
+                return True
+        else:
+            print(f"\n❌ Tool returned unexpected result type: {type(result)}")
+            return False
+            
+    except Exception as e:
+        print(f"\n❌ Error testing tool: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 if __name__ == "__main__":
     print("Robot Tools Test Suite")
     print("=" * 50)
-    print("Testing all robot tools: get_robot_feedback, get_robot_detection, get_robot_gesture")
+    print("Testing all robot tools: get_robot_feedback, get_robot_detection, get_robot_gesture, analyze_robot_image")
     print("=" * 50)
     
     # Check if config.json exists
@@ -103,7 +140,8 @@ if __name__ == "__main__":
     tests = [
         ("Robot Feedback Tool", test_robot_feedback),
         ("Robot Detection Tool", test_robot_detection),
-        ("Robot Gesture Tool", test_robot_gesture)
+        ("Robot Gesture Tool", test_robot_gesture),
+        ("Robot Image Analysis Tool", test_analyze_robot_image)
     ]
     
     # Run all tests

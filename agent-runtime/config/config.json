@@ -2,6 +2,7 @@
     "region": "us-west-2",
     "accountId": "533267442321",
     "projectName": "robo",
+    "s3_bucket_name": "industry-robot-detected-images",
     "agentcore_gateway_iam_role": "arn:aws:iam::533267442321:role/AgentCoreGatewayRoleForrobo",
     "cognito": {
       "user_pool_name": "robo-agentcore-user-pool",

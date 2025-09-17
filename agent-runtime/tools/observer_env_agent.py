@@ -1,41 +1,38 @@
 from strands import Agent, tool
-from utils.s3_util import download_image_from_s3
-from tools.robot_tools import get_robot_feedback, get_robot_detection, get_robot_gesture
+from tools.robot_tools import get_robot_feedback, get_robot_detection, get_robot_gesture, analyze_robot_image
 from prompts.prompt import OBSERVER_ENV_AGENT_PROMPT
 
 
 @tool
-def observe_env_agent(image_path: str, description: str) -> str:
-    """현재 로봇이 바라보고 있는 영상과 로봇의 상태 정보를 객관적으로 수집합니다.
+def observe_env_agent() -> str:
+    """현재 로봇의 상태 정보를 수집하고, 필요시에만 이미지를 분석합니다.
+    
+    이 Agent는 로봇의 feedback 정보를 확인하고, 필요하다면 detection과 gesture 데이터를 확인합니다.
+    긴급상황이나 낮은 신뢰도의 감지가 있을 때만 이미지를 다운로드하여 분석합니다.
     
     Args:
-        image_path: 분석할 이미지의 S3 경로
-        description: 이미지에 대한 상황 설명
+        None
 
     Returns:
-        로봇 상태 정보와 환경 관찰 데이터 (객관적 정보만)
+        로봇 상태 정보와 환경 관찰 데이터 (필요시 이미지 분석 포함)
     """
     try:
-        # S3에서 이미지 다운로드
-        image_bytes = download_image_from_s3(image_path)
-        
+        # Agent 생성 - 필요한 도구들을 포함
         agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            tools=[get_robot_feedback, get_robot_detection, get_robot_gesture],
+            tools=[
+                get_robot_feedback,
+                get_robot_detection,
+                get_robot_gesture,
+                analyze_robot_image
+            ],
             system_prompt=OBSERVER_ENV_AGENT_PROMPT
         )
 
-        response = agent([
-            {"text": description},
-            {
-                "image": {
-                    "format": "png",
-                    "source": {
-                        "bytes": image_bytes,
-                    },
-                },
-            },
-        ])
+        # Agent에게 현재 상황을 분석하도록 요청
+        response = agent("현재 로봇의 상태를 확인하고, 필요하다면 이미지를 분석해주세요.")
+        
+        
         return response
     except Exception as e:
         return f"Error in observe_env: {str(e)}"
