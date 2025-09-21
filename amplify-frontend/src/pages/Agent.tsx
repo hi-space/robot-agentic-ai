@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -213,6 +213,7 @@ export default function Dashboard() {
     isProcessing: false,
   })
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
+  const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
   const [tasks] = useState<Task[]>([
     {
       id: '1',
@@ -246,16 +247,17 @@ export default function Dashboard() {
       timestamp: new Date(Date.now() - 20 * 60 * 1000),
     },
   ])
-  // 초기 메시지 추가
+  // 초기 메시지 추가 (중복 방지 로직 포함)
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !hasInitialized.current) {
+      hasInitialized.current = true
       addMessage({
         type: 'chunk',
         data: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
         isUser: false,
       })
     }
-  }, [messages.length]) // addMessage 의존성 제거
+  }, [messages.length, addMessage])
 
   // AgentCore 연결 상태 확인
   useEffect(() => {
@@ -512,7 +514,7 @@ export default function Dashboard() {
 
   const handleResetChat = () => {
     clearMessages()
-    // useEffect에서 자동으로 초기 메시지가 추가되므로 여기서는 추가하지 않음
+    hasInitialized.current = false // 리셋 시 초기화 상태도 리셋
   }
 
   // 전체 비활성화 상태 계산

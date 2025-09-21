@@ -26,7 +26,7 @@ export const useStreamingMessages = (): UseStreamingMessagesReturn => {
     messageRefs.current.set(id, newMessage)
     
     return id
-  }, [])
+  }, []) // 의존성 배열은 비워두어 함수가 안정적으로 유지되도록 함
 
   const updateMessage = useCallback((id: string, updates: Partial<StreamMessage>) => {
     setMessages(prev => 
