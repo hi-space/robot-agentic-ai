@@ -197,17 +197,6 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* Status section */}
-      <Card elevation={1}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <CheckCircleIcon sx={{ color: 'success.main', mr: 1 }} />
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              애플리케이션이 정상적으로 실행 중입니다
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
     </Box>
   )
 }

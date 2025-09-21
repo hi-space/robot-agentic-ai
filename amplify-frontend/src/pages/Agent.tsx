@@ -562,39 +562,7 @@ export default function Dashboard() {
       <MainLayout>
         {/* 왼쪽 패널 - 제어 버튼들 */}
         <SidePanel>
-          {/* 대화 리셋 버튼 */}
-          <StyledCard sx={{ 
-            flex: '0 0 auto',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-            }
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <StyledButton
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                startIcon={<RefreshIcon />}
-                disabled={isDisabled}
-                onClick={handleResetChat}
-                sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.9rem' }, 
-                  py: { xs: 1.2, sm: 1.5, md: 1.5 },
-                  minHeight: { xs: '44px', sm: '48px', md: '52px' },
-                  borderColor: 'error.main',
-                  color: 'error.main',
-                  '&:hover': {
-                    borderColor: 'error.dark',
-                    backgroundColor: 'error.light',
-                    color: 'error.dark'
-                  }
-                }}
-              >
-                대화내용 리셋
-              </StyledButton>
-            </CardContent>
-          </StyledCard>
-
+          
           {/* 로봇 제어 패널 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
@@ -682,44 +650,6 @@ export default function Dashboard() {
                     sx={{ 
                       fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
                       textAlign: 'left', 
-                      py: { xs: 1, sm: 1.5, md: 1.5 },
-                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
-                    }}
-                  >
-                    {item.text}
-                  </StyledButton>
-                ))}
-              </Box>
-            </CardContent>
-          </StyledCard>
-
-          {/* 이슈 제기 패널 */}
-          <StyledCard sx={{ 
-            flex: '0 0 auto',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-            }
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                긴급 신고
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {[
-                  { text: '화재 발생', icon: <FireIcon />, color: 'error' },
-                  { text: '가스 유출', icon: <GasIcon />, color: 'warning' },
-                  { text: '작업자 사고 감지', icon: <PersonPinIcon />, color: 'info' },
-                ].map((item, index) => (
-                  <StyledButton
-                    key={index}
-                    variant="contained"
-                    color={item.color as any}
-                    fullWidth
-                    startIcon={item.icon}
-                    disabled={isDisabled}
-                    onClick={() => handleButtonClick(item.text)}
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
                       py: { xs: 1, sm: 1.5, md: 1.5 },
                       minHeight: { xs: '40px', sm: '44px', md: '48px' }
                     }}

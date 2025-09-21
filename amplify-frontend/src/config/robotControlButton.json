@@ -1,53 +1,102 @@
 {
   "robotControlButtons": [
     {
-      "text": "앉아",
-      "action": "NEUTRAL",
-      "message": "네, 앉겠습니다!",
-      "icon": "DirectionsRunIcon",
-      "color": "primary"
+      "text": "0->1",
+      "action": "from0to1",
+      "message": "",
+      "icon": "FavoriteIcon",
+      "color": "error"
     },
     {
-      "text": "일어서",
-      "action": "HAPPY",
-      "message": "좋아요! 일어서겠습니다!",
+      "text": "1->2",
+      "action": "from1to2",
+      "message": "",
       "icon": "DirectionsWalkIcon",
       "color": "primary"
     },
     {
-      "text": "뒹굴어",
-      "action": "SAD",
-      "message": "굴러볼게요.",
+      "text": "2->3",
+      "action": "from2to3",
+      "message": "",
       "icon": "SportsMartialArtsIcon",
       "color": "secondary"
     },
     {
-      "text": "춤춰",
-      "action": "HAPPY",
-      "message": "와! 춤을 춰볼게요! 즐거워요!",
+      "text": "3->0",
+      "action": "from3to0",
+      "message": "",
       "icon": "SportsMartialArtsIcon",
       "color": "success"
     },
     {
-      "text": "하트해",
-      "action": "HAPPY",
+      "text": "쉬어",
+      "action": "normal",
+      "message": "네, 얌전히 있을게요",
+      "icon": "HomeIcon",
+      "color": "info"
+    },
+    {
+      "text": "멈춰",
+      "action": "stop_move",
+      "message": "멈추겠습니다.",
+      "icon": "StopIcon",
+      "color": "primary"
+    },
+    {
+      "text": "일어서",
+      "action": "stand",
+      "message": "일어서겠습니다!",
+      "icon": "DirectionsWalkIcon",
+      "color": "primary"
+    },
+    {
+      "text": "앉기",
+      "action": "sit",
+      "message": "앉겠습니다!",
+      "icon": "DirectionsRunIcon",
+      "color": "primary"
+    },
+    {
+      "text": "안녕",
+      "action": "hello",
+      "message": "안녕하세요! 반가워요!",
+      "icon": "WavingHandIcon",
+      "color": "primary"
+    },
+    {
+      "text": "스트레칭",
+      "action": "stretch",
+      "message": "스트레칭을 해볼게요!",
+      "icon": "AccessibilityNewIcon",
+      "color": "primary"
+    },
+    {
+      "text": "긁기",
+      "action": "scrape",
+      "message": "긁어볼게요!",
+      "icon": "TouchAppIcon",
+      "color": "primary"
+    },
+    {
+      "text": "하트",
+      "action": "heart",
       "message": "사랑해요! 하트를 보여드릴게요!",
       "icon": "FavoriteIcon",
       "color": "error"
     },
     {
-      "text": "돌아와",
-      "action": "NEUTRAL",
-      "message": "네, 원래 자리로 돌아가겠습니다.",
-      "icon": "HomeIcon",
-      "color": "info"
+      "text": "춤1",
+      "action": "dance1",
+      "message": "첫 번째 춤을 춰볼게요!",
+      "icon": "MusicNoteIcon",
+      "color": "success"
     },
     {
-        "text": "점프해",
-        "action": "HAPPY",
-        "message": "점프! 점프! 신나게 뛰어볼게요!",
-        "icon": "DirectionsRunIcon",
-        "color": "warning"
+      "text": "춤2",
+      "action": "dance2",
+      "message": "두 번째 춤을 춰볼게요!",
+      "icon": "MusicNoteIcon",
+      "color": "success"
     }
   ]
 }
