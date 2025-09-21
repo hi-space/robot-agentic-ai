@@ -1,28 +1,28 @@
 {
   "robotControlButtons": [
     {
-      "text": "0->1",
+      "text": "0-1",
       "action": "from0to1",
       "message": "포인트 0에서 1로 이동합니다",
       "icon": "Navigation",
       "color": "primary"
     },
     {
-      "text": "1->2",
+      "text": "1-2",
       "action": "from1to2",
       "message": "포인트 1에서 2로 이동합니다",
       "icon": "Navigation",
       "color": "primary"
     },
     {
-      "text": "2->3",
+      "text": "2-3",
       "action": "from2to3",
       "message": "포인트 2에서 3로 이동합니다",
       "icon": "Navigation",
       "color": "primary"
     },
     {
-      "text": "3->0",
+      "text": "3-0",
       "action": "from3to0",
       "message": "포인트 3에서 0으로 이동합니다",
       "icon": "Navigation",

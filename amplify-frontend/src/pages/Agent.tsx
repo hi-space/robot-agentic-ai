@@ -234,6 +234,8 @@ export default function Dashboard() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [debugMode, setDebugMode] = useState<boolean>(true) // Debug mode state
   const [settingsExpanded, setSettingsExpanded] = useState<boolean>(false) // Settings card collapse state
+  const [robotControlExpanded, setRobotControlExpanded] = useState<boolean>(true) // Robot control card collapse state
+  const [quickCommandExpanded, setQuickCommandExpanded] = useState<boolean>(true) // Quick command card collapse state
   const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
   
   // 초기 메시지 추가 (중복 방지 로직 포함)
@@ -661,147 +663,223 @@ export default function Dashboard() {
         <SidePanel>
           
        
-          {/* 로봇 제어 패널 */}
+          {/* 로봇 제어 패널 - 접을 수 있는 카드 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
             '&:hover': {
               transform: 'translateY(-4px)',
             }
           }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  mb: robotControlExpanded ? 2 : 0,
+                  cursor: 'pointer',
+                  py: 0.5,
+                  px: 0.5
+                }}
+                onClick={() => setRobotControlExpanded(!robotControlExpanded)}
+              >
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary', 
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
                   로봇 제어
                 </Typography>
-                {robotControlStatus.isExecuting && (
-                  <LinearProgress sx={{ width: 60, height: 4, borderRadius: 2 }} />
-                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {robotControlStatus.isExecuting && (
+                    <LinearProgress sx={{ width: 40, height: 3, borderRadius: 2 }} />
+                  )}
+                  <IconButton 
+                    size="small"
+                    sx={{ 
+                      transform: robotControlExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      p: 0.5,
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    <ExpandMore />
+                  </IconButton>
+                </Box>
               </Box>
-              {robotControlStatus.lastAction && (
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontSize: '0.75rem' }}>
-                  마지막 실행: {robotControlStatus.lastAction}
-                </Typography>
-              )}
-              {robotControlStatus.error && (
-                <Typography variant="caption" color="error" sx={{ mb: 1, display: 'block', fontSize: '0.75rem' }}>
-                  오류: {robotControlStatus.error}
-                </Typography>
-              )}
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: { 
-                  xs: '1fr', 
-                  sm: '1fr 1fr', 
-                  md: '1fr 1fr',
-                  lg: '1fr 1fr 1fr',
-                  xl: '1fr 1fr 1fr'
-                }, 
-                gap: { xs: 1, sm: 1.5, md: 2 },
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}>
-                {robotControlMapping.robotControlButtons.map((button, index) => {
-                  // 버튼 색상별 그라데이션 정의 - 더 세련된 색상
-                  const getButtonGradient = (color: string) => {
-                    switch (color) {
-                      case 'primary':
-                        return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' // 블루-바이올렛
-                      case 'secondary':
-                        return 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' // 바이올렛-핑크
-                      case 'success':
-                        return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' // 그린
-                      case 'warning':
-                        return 'linear-gradient(135deg, #f59e0b 0%, #eab308 100%)' // 앰버-옐로우
-                      case 'error':
-                        return 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)' // 레드-핑크
-                      case 'info':
-                        return 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' // 시안-블루
-                      default:
-                        return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
-                    }
-                  }
-
-                  const getButtonHoverGradient = (color: string) => {
-                    switch (color) {
-                      case 'primary':
-                        return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
-                      case 'secondary':
-                        return 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)'
-                      case 'success':
-                        return 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
-                      case 'warning':
-                        return 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)'
-                      case 'error':
-                        return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                      case 'info':
-                        return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                      default:
-                        return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
-                    }
-                  }
-
-                  return (
-                    <StyledButton
-                      key={index}
-                      variant="contained"
-                      fullWidth
-                      startIcon={getIconComponent(button.icon)}
-                      disabled={isDisabled}
-                      onClick={() => handleButtonClick(button.text)}
-                      sx={{ 
-                        fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' }, 
-                        py: { xs: 1, sm: 1.5, md: 1.5 },
-                        minHeight: { xs: '40px', sm: '44px', md: '48px' },
-                        background: getButtonGradient(button.color),
-                        color: 'white',
-                        fontWeight: 600,
-                        '&:hover': {
-                          background: getButtonHoverGradient(button.color),
-                          transform: 'translateY(-2px)',
-                        },
-                        '& .MuiSvgIcon-root': {
-                          color: 'white',
+              
+              <Collapse in={robotControlExpanded}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  {robotControlStatus.lastAction && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      마지막 실행: {robotControlStatus.lastAction}
+                    </Typography>
+                  )}
+                  {robotControlStatus.error && (
+                    <Typography variant="caption" color="error" sx={{ fontSize: '0.75rem' }}>
+                      오류: {robotControlStatus.error}
+                    </Typography>
+                  )}
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: { 
+                      xs: '1fr', 
+                      sm: '1fr 1fr', 
+                      md: '1fr 1fr',
+                      lg: '1fr 1fr 1fr',
+                      xl: '1fr 1fr 1fr'
+                    }, 
+                    gap: { xs: 1, sm: 1.5, md: 2 },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                    {robotControlMapping.robotControlButtons.map((button, index) => {
+                      // 버튼 색상별 그라데이션 정의 - 더 세련된 색상
+                      const getButtonGradient = (color: string) => {
+                        switch (color) {
+                          case 'primary':
+                            return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' // 블루-바이올렛
+                          case 'secondary':
+                            return 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' // 바이올렛-핑크
+                          case 'success':
+                            return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' // 그린
+                          case 'warning':
+                            return 'linear-gradient(135deg, #f59e0b 0%, #eab308 100%)' // 앰버-옐로우
+                          case 'error':
+                            return 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)' // 레드-핑크
+                          case 'info':
+                            return 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' // 시안-블루
+                          default:
+                            return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
                         }
-                      }}
-                    >
-                      {button.text}
-                    </StyledButton>
-                  )
-                })}
-              </Box>
+                      }
+
+                      const getButtonHoverGradient = (color: string) => {
+                        switch (color) {
+                          case 'primary':
+                            return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
+                          case 'secondary':
+                            return 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)'
+                          case 'success':
+                            return 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
+                          case 'warning':
+                            return 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)'
+                          case 'error':
+                            return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                          case 'info':
+                            return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                          default:
+                            return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
+                        }
+                      }
+
+                      return (
+                        <StyledButton
+                          key={index}
+                          variant="contained"
+                          fullWidth
+                          startIcon={getIconComponent(button.icon)}
+                          disabled={isDisabled}
+                          onClick={() => handleButtonClick(button.text)}
+                          sx={{ 
+                            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' }, 
+                            py: { xs: 1, sm: 1.5, md: 1.5 },
+                            minHeight: { xs: '40px', sm: '44px', md: '48px' },
+                            background: getButtonGradient(button.color),
+                            color: 'white',
+                            fontWeight: 600,
+                            '&:hover': {
+                              background: getButtonHoverGradient(button.color),
+                              transform: 'translateY(-2px)',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: 'white',
+                            }
+                          }}
+                        >
+                          {button.text}
+                        </StyledButton>
+                      )
+                    })}
+                  </Box>
+                </Box>
+              </Collapse>
             </CardContent>
           </StyledCard>
 
-          {/* 채팅 패널 */}
+          {/* 빠른 명령 패널 - 접을 수 있는 카드 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
             '&:hover': {
               transform: 'translateY(-4px)',
             }
           }}>
-            <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                빠른 명령
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {quickCommandMapping.quickCommandButtons.map((button, index) => (
-                  <StyledButton
-                    key={index}
-                    variant="outlined"
-                    fullWidth
-                    startIcon={getIconComponent(button.icon)}
-                    disabled={isDisabled}
-                    onClick={() => handleButtonClick(button.text)}
-                    sx={{ 
-                      fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' }, 
-                      textAlign: 'left', 
-                      py: { xs: 1, sm: 1.5, md: 1.5 },
-                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
-                    }}
-                  >
-                    {button.text}
-                  </StyledButton>
-                ))}
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  mb: quickCommandExpanded ? 2 : 0,
+                  cursor: 'pointer',
+                  py: 0.5,
+                  px: 0.5
+                }}
+                onClick={() => setQuickCommandExpanded(!quickCommandExpanded)}
+              >
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary', 
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  빠른 명령
+                </Typography>
+                <IconButton 
+                  size="small"
+                  sx={{ 
+                    transform: quickCommandExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    p: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
+                >
+                  <ExpandMore />
+                </IconButton>
               </Box>
+              
+              <Collapse in={quickCommandExpanded}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {quickCommandMapping.quickCommandButtons.map((button, index) => (
+                      <StyledButton
+                        key={index}
+                        variant="outlined"
+                        fullWidth
+                        startIcon={getIconComponent(button.icon)}
+                        disabled={isDisabled}
+                        onClick={() => handleButtonClick(button.text)}
+                        sx={{ 
+                          fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' }, 
+                          textAlign: 'left', 
+                          py: { xs: 1, sm: 1.5, md: 1.5 },
+                          minHeight: { xs: '40px', sm: '44px', md: '48px' }
+                        }}
+                      >
+                        {button.text}
+                      </StyledButton>
+                    ))}
+                  </Box>
+                </Box>
+              </Collapse>
             </CardContent>
           </StyledCard>
 
@@ -861,7 +939,7 @@ export default function Dashboard() {
                         fontSize: '0.9rem',
                         lineHeight: 1.2
                       }}>
-                        디버그 모드
+                        로봇 제어 생략
                       </Typography>
                       <Tooltip title={debugMode ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" : "로봇 제어 기능 On (MCP 서버 연동)"}>
                         <FormControlLabel
