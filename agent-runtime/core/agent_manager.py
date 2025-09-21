@@ -6,6 +6,7 @@ from config.config import Config
 from core.mcp_manager import MCPServerManager
 from prompts.prompt import ORCHESTRATOR_PROMPT
 from tools.observer_env_agent import observe_env_agent
+from tools.robot_tools import get_robot_feedback, get_robot_detection, get_robot_gesture
 
 
 class AgentManager:
@@ -18,28 +19,37 @@ class AgentManager:
         self.agent: Optional[Agent] = None
         self.mcp_client: Optional[Any] = None
     
-    def initialize(self) -> bool:
+    def initialize(self, debug: bool = False) -> bool:
         """Initialize the agent with MCP tools and local tools"""
         try:
-            self.logger.info("Starting agent initialization...")
+            self.logger.info(f"Starting agent initialization... (debug mode: {debug})")
             
-            # Load tools from MCP server
-            mcp_tools, mcp_client = self.mcp_manager.load_tools()
-            if not mcp_tools or not mcp_client:
-                self.logger.error("Failed to load tools from MCP server")
-                return False
+            local_tools = [
+                get_robot_feedback,
+                get_robot_detection,
+                get_robot_gesture
+            ]
             
-            # Load local tools (only observe_env, other tools are handled internally)
-            local_tools = [observe_env_agent]
-            
-            # Combine MCP tools and local tools
-            all_tools = mcp_tools + local_tools
-            self.logger.info(f"Loaded {len(mcp_tools)} MCP tools and {len(local_tools)} local tools")
+            if debug:
+                # In debug mode, only use local tools
+                self.logger.info("Debug mode: Skipping MCP tool integration, using only local tools")
+                all_tools = local_tools
+                mcp_client = None
+            else:
+                # Load tools from MCP server
+                mcp_tools, mcp_client = self.mcp_manager.load_tools()
+                if not mcp_tools or not mcp_client:
+                    self.logger.error("Failed to load tools from MCP server")
+                    return False
+                
+                # Combine MCP tools and local tools
+                all_tools = mcp_tools + local_tools
+                self.logger.info(f"Loaded {len(mcp_tools)} MCP tools and {len(local_tools)} local tools")
             
             # Create the agent
             if self._create_agent(all_tools):
                 self.mcp_client = mcp_client
-                self.logger.info("Agent initialized successfully")
+                self.logger.info(f"Agent initialized successfully (debug mode: {debug})")
                 return True
             else:
                 return False
@@ -68,9 +78,14 @@ class AgentManager:
             self.logger.error(f"Error creating agent: {str(e)}", exc_info=True)
             return False
     
-    def is_initialized(self) -> bool:
+    def is_initialized(self, debug: bool = False) -> bool:
         """Check if agent is properly initialized"""
-        return self.agent is not None and self.mcp_client is not None
+        if debug:
+            # In debug mode, only check if agent exists (MCP client not required)
+            return self.agent is not None
+        else:
+            # In normal mode, both agent and MCP client must exist
+            return self.agent is not None and self.mcp_client is not None
     
     def get_agent(self) -> Optional[Agent]:
         """Get the initialized agent"""
@@ -80,15 +95,19 @@ class AgentManager:
         """Get the MCP client"""
         return self.mcp_client
     
-    def ensure_initialized(self) -> bool:
+    def ensure_initialized(self, debug: bool = False) -> bool:
         """Ensure agent is initialized, attempt initialization if not"""
-        if self.is_initialized():
+        if self.is_initialized(debug=debug):
             return True
         
-        self.logger.info("Agent not initialized, checking MCP server status...")
-        if self.mcp_manager.is_server_running():
-            self.logger.info("MCP server is running, attempting to initialize agent...")
-            return self.initialize()
+        if debug:
+            self.logger.info("Agent not initialized in debug mode, attempting to initialize with local tools only...")
+            return self.initialize(debug=True)
         else:
-            self.logger.error("MCP server is not running")
-            return False
+            self.logger.info("Agent not initialized, checking MCP server status...")
+            if self.mcp_manager.is_server_running():
+                self.logger.info("MCP server is running, attempting to initialize agent...")
+                return self.initialize(debug=False)
+            else:
+                self.logger.error("MCP server is not running")
+                return False

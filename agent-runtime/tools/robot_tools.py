@@ -9,6 +9,8 @@ from utils.s3_util import download_image_from_s3
 
 def _get_fifo_messages(queue_name: str, config: dict) -> Dict[str, Any]:
     """Helper function to get messages from SQS FIFO queue.
+    Reads only the latest 3 messages, filters out messages older than 3 minutes,
+    and clears the queue after processing.
     
     Args:
         queue_name: Name of the FIFO queue (without .fifo suffix)
@@ -38,11 +40,15 @@ def _get_fifo_messages(queue_name: str, config: dict) -> Dict[str, Any]:
     except Exception as e:
         return {"error": f"Cannot access SQS queue: {e}. Please check queue name, AWS credentials, and permissions."}
     
-    # Receive messages from SQS (non-blocking)
+    # Get current timestamp for filtering
+    current_time = datetime.now()
+    three_minutes_ago = current_time.timestamp() - (3 * 60)  # 3 minutes in seconds
+    
+    # Receive only the latest 3 messages from SQS
     try:
         response = sqs.receive_message(
             QueueUrl=queue_url,
-            MaxNumberOfMessages=10,
+            MaxNumberOfMessages=3,  # Changed from 10 to 3
             WaitTimeSeconds=0,  # Non-blocking for tool usage
             MessageAttributeNames=['All']
         )
@@ -55,69 +61,89 @@ def _get_fifo_messages(queue_name: str, config: dict) -> Dict[str, Any]:
         return {
             "status": "no_messages",
             "message": f"No messages available in the {queue_name} queue",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": current_time.isoformat()
         }
     
-    # Process messages
+    # Process messages and filter by timestamp
     processed_messages = []
+    messages_to_delete = []  # Track all messages for deletion
     
     for message in messages:
         try:
             # Parse message body
             message_body = json.loads(message['Body'])
             
-            # Extract message attributes
-            message_attributes = message.get('MessageAttributes', {})
+            # Check if message has a timestamp and filter by 3-minute rule
+            message_timestamp = None
+            if isinstance(message_body, dict) and 'timestamp' in message_body:
+                try:
+                    # Parse timestamp from message
+                    message_timestamp = datetime.fromisoformat(message_body['timestamp'].replace('Z', '+00:00'))
+                    message_timestamp_seconds = message_timestamp.timestamp()
+                    
+                    # Skip message if it's older than 3 minutes
+                    if message_timestamp_seconds < three_minutes_ago:
+                        print(f"Skipping message {message['MessageId']} - older than 3 minutes")
+                        # Still add to deletion list to clear the queue
+                        messages_to_delete.append(message)
+                        continue
+
+                except (ValueError, TypeError) as e:
+                    print(f"Warning: Could not parse timestamp from message {message['MessageId']}: {e}")
+                    # Continue processing if timestamp parsing fails
             
-            # Create status message
-            status_message = {
-                "message_id": message['MessageId'],
-                "timestamp": datetime.now().isoformat(),
-                "message_body": message_body,
-                "attributes": {
-                    attr_name: attr_value['StringValue'] 
-                    for attr_name, attr_value in message_attributes.items()
-                }
-            }
-            
-            processed_messages.append(status_message)
-            
-            # Delete message after processing
-            try:
-                sqs.delete_message(
-                    QueueUrl=queue_url,
-                    ReceiptHandle=message['ReceiptHandle']
-                )
-            except Exception as e:
-                # Log error but continue processing other messages
-                print(f"Warning: Could not delete message {message['MessageId']}: {e}")
+            # Add message_id to the original message format
+            message_body["message_id"] = message['MessageId']
+            processed_messages.append(message_body)
+            messages_to_delete.append(message)
                 
         except json.JSONDecodeError:
-            # Handle non-JSON messages
-            status_message = {
+            # Handle non-JSON messages - add message_id to raw message
+            raw_message = {
                 "message_id": message['MessageId'],
-                "timestamp": datetime.now().isoformat(),
-                "message_body": message['Body'],  # Raw message
-                "attributes": {
-                    attr_name: attr_value['StringValue'] 
-                    for attr_name, attr_value in message.get('MessageAttributes', {}).items()
-                }
+                "raw_body": message['Body']
             }
-            processed_messages.append(status_message)
+            processed_messages.append(raw_message)
+            messages_to_delete.append(message)
+    
+    # Delete all processed messages to clear the queue
+    for message in messages_to_delete:
+        try:
+            sqs.delete_message(
+                QueueUrl=queue_url,
+                ReceiptHandle=message['ReceiptHandle']
+            )
+        except Exception as e:
+            print(f"Warning: Could not delete message {message['MessageId']}: {e}")
+    
+    # Clear any remaining messages in the queue
+    try:
+        while True:
+            response = sqs.receive_message(
+                QueueUrl=queue_url,
+                MaxNumberOfMessages=10,
+                WaitTimeSeconds=0
+            )
+            remaining_messages = response.get('Messages', [])
+            if not remaining_messages:
+                break
             
-            # Delete message after processing
-            try:
-                sqs.delete_message(
-                    QueueUrl=queue_url,
-                    ReceiptHandle=message['ReceiptHandle']
-                )
-            except Exception as e:
-                print(f"Warning: Could not delete message {message['MessageId']}: {e}")
+            # Delete remaining messages
+            for message in remaining_messages:
+                try:
+                    sqs.delete_message(
+                        QueueUrl=queue_url,
+                        ReceiptHandle=message['ReceiptHandle']
+                    )
+                except Exception as e:
+                    print(f"Warning: Could not delete remaining message {message['MessageId']}: {e}")
+    except Exception as e:
+        print(f"Warning: Error clearing remaining messages: {e}")
     
     return {
         "status": "success",
         "message_count": len(processed_messages),
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": current_time.isoformat(),
         "messages": processed_messages
     }
 
@@ -149,10 +175,6 @@ def get_robot_feedback():
         
         if "error" in result:
             return result
-        
-        # Rename messages to robot_feedback_messages for clarity
-        if "messages" in result:
-            result["robot_feedback_messages"] = result.pop("messages")
         
         return result
         
@@ -193,10 +215,6 @@ def get_robot_detection():
         if "error" in result:
             return result
         
-        # Rename messages to robot_detection_messages
-        if "messages" in result:
-            result["robot_detection_messages"] = result.pop("messages")
-        
         return result
         
     except Exception as e:
@@ -235,10 +253,6 @@ def get_robot_gesture():
         
         if "error" in result:
             return result
-        
-        # Rename messages to robot_gesture_messages
-        if "messages" in result:
-            result["robot_gesture_messages"] = result.pop("messages")
         
         return result
         
@@ -318,30 +332,18 @@ def extract_image_path_from_data(data_json: str, data_type: str = "detection") -
         S3 image path if found, error message otherwise
     """
     try:
-        import json
         data = json.loads(data_json)
         
-        # Determine the message key and folder based on data type
+        # Determine the message key based on data type
         message_key = f"robot_{data_type}_messages"
-        folder = "detected" if data_type == "detection" else "gestures"
         
         if message_key in data:
             for message in data[message_key]:
+                # Check message_body for filename (S3 path)
                 message_body = message.get("message_body", {})
                 if isinstance(message_body, dict) and "filename" in message_body:
-                    # Load configuration to get bucket name
-                    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'config.json')
-                    try:
-                        with open(config_path, 'r') as f:
-                            config = json.load(f)
-                        bucket_name = config.get('s3_bucket_name', 'industry-robot-detected-images')
-                    except:
-                        bucket_name = 'industry-robot-detected-images'  # fallback
+                    return message_body["filename"]
                     
-                    # Construct S3 path directly
-                    filename = message_body["filename"]
-                    return f"s3://{bucket_name}/{folder}/{filename}"
-        
         return f"No image path found in {data_type} data"
     except Exception as e:
         return f"Error extracting image path from {data_type} data: {str(e)}"

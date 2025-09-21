@@ -10,6 +10,9 @@ import {
   Chip,
   LinearProgress,
   Divider,
+  Switch,
+  FormControlLabel,
+  Tooltip,
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import {
@@ -213,6 +216,7 @@ export default function Dashboard() {
     isProcessing: false,
   })
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
+  const [debugMode, setDebugMode] = useState<boolean>(false) // Debug mode state
   const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
   const [tasks] = useState<Task[]>([
     {
@@ -325,8 +329,8 @@ export default function Dashboard() {
         isProcessing: true,
       })
 
-      // AgentCore 호출
-      const stream = await invokeAgentCore(text.trim(), currentSessionId)
+      // AgentCore 호출 (debug 모드 포함)
+      const stream = await invokeAgentCore(text.trim(), currentSessionId, debugMode)
       
       // 세션 ID 업데이트 (첫 번째 호출인 경우)
       if (!currentSessionId) {
@@ -474,7 +478,7 @@ export default function Dashboard() {
         const response = await invokeRobotControl({ 
           action: buttonInfo.action as RobotAction,
           message: buttonInfo.message 
-        })
+        }, debugMode)
         
         if (response.statusCode === 200 && response.body) {
           addMessage({
@@ -565,6 +569,7 @@ export default function Dashboard() {
         {/* 왼쪽 패널 - 제어 버튼들 */}
         <SidePanel>
           
+       
           {/* 로봇 제어 패널 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
@@ -662,6 +667,44 @@ export default function Dashboard() {
               </Box>
             </CardContent>
           </StyledCard>
+
+             {/* Debug 모드 토글 */}
+             <StyledCard sx={{ 
+            flex: '0 0 auto',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+            }
+          }}>
+            <CardContent sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
+                  디버그 모드
+                </Typography>
+                <Tooltip title={debugMode ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" : "로봇 제어 기능 On (MCP 서버 연동)"}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={debugMode}
+                        onChange={(e) => setDebugMode(e.target.checked)}
+                        color="primary"
+                        disabled={isDisabled}
+                      />
+                    }
+                    label={debugMode ? "ON" : "OFF"}
+                    labelPlacement="end"
+                    sx={{ m: 0 }}
+                  />
+                </Tooltip>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                {debugMode 
+                  ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" 
+                  : "로봇 제어 기능 On (MCP 서버 연동)"
+                }
+              </Typography>
+            </CardContent>
+          </StyledCard>
+          
         </SidePanel>
 
         {/* 중앙 패널 - 채팅 인터페이스 */}
