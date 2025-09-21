@@ -1,7 +1,7 @@
 {
-  "name": "amplify-frontend",
+  "name": "robot-agentic-ai-frontend",
   "version": "1.0.0",
-  "description": "React 19 + AWS Amplify Frontend Application",
+  "description": "AI-powered robot control and monitoring web application with AWS Bedrock AgentCore, real-time chat interface, and voice synthesis",
   "private": true,
   "scripts": {
     "start": "react-scripts start",
@@ -60,10 +60,28 @@
     ]
   },
   "keywords": [
+    "robot-control",
+    "ai",
+    "aws-bedrock",
+    "agentcore",
+    "voice-synthesis",
+    "polly",
+    "amplify",
     "react",
     "typescript",
-    "aws-amplify"
+    "material-ui",
+    "real-time-chat",
+    "iot",
+    "robotics"
   ],
-  "author": "",
-  "license": "ISC"
+  "author": "Robot Agentic AI Team",
+  "license": "ISC",
+  "homepage": "https://github.com/your-org/robot-agentic-ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/robot-agentic-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/robot-agentic-ai/issues"
+  }
 }
