@@ -9,7 +9,7 @@ class Config:
     """Configuration management for the agent runtime"""
     mcp_server_url: str
     bearer_token: Optional[str] = None
-    model_id: str = "us.anthropic.claude-3-5-sonnet-20241022-v2:0" # us.anthropic.claude-3-7-sonnet-20250219-v1:0
+    model_id: str = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     max_retries: int = 2
     request_timeout: int = 10
     
@@ -27,6 +27,7 @@ class Config:
             
             return cls(
                 mcp_server_url=config_data.get("gateway_url", ""),
+                model_id=config_data.get("model_id", "us.anthropic.claude-3-5-haiku-20241022-v1:0"),
                 bearer_token=None  # Will be obtained from SSM at runtime
             )
             

@@ -1,6 +1,7 @@
 from strands import Agent, tool
 from tools.robot_tools import get_robot_feedback, get_robot_detection, get_robot_gesture, analyze_robot_image
 from prompts.prompt import ORCHESTRATOR_PROMPT
+from config.config import Config
 
 
 @tool
@@ -16,9 +17,12 @@ def observe_env_agent() -> str:
         로봇 상태 정보와 환경 관찰 데이터 (필요시 이미지 분석 포함)
     """
     try:
+        # Config에서 모델 ID 로드
+        config = Config.from_config_file()
+        
         # Agent 생성 - 필요한 도구들을 포함
         agent = Agent(
-            model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            model=config.model_id,
             tools=[
                 get_robot_feedback,
                 get_robot_detection,
