@@ -7,12 +7,9 @@ bedrock_agent_runtime_client = boto3.client("bedrock-agent-runtime")
 
 topic = os.environ.get('TOPIC', 'robot/control')
 
-def command_robot(action: str, message: str) -> str:
-    client = boto3.client(
-        'iot-data',
-        region_name='ap-northeast-2'
-    )        
+def command_robot(action: str, message: str, debug: bool = False) -> str:
     print('action: ', action)
+    print('debug mode: ', debug)
 
     say = ""
     if message:
@@ -63,7 +60,19 @@ def command_robot(action: str, message: str) -> str:
                         
     print('topic: ', topic)
 
-    try:         
+    # Debug 모드인 경우 MQTT publish를 건너뛰고 시뮬레이션만 수행
+    if debug:
+        print('DEBUG MODE: MQTT publish를 건너뛰고 시뮬레이션만 수행합니다.')
+        print('Simulated payload: ', payload)
+        return True
+
+    # Debug 모드가 아닌 경우 실제 MQTT publish 수행
+    try:
+        client = boto3.client(
+            'iot-data',
+            region_name='ap-northeast-2'
+        )
+        
         response = client.publish(
             topic = topic,
             qos = 1,
@@ -85,8 +94,10 @@ def lambda_handler(event, context):
     print(f"action: {action}")
     message = event.get('message')
     print(f"message: {message}")
+    debug = event.get('debug', False)  # debug 파라미터 추가, 기본값 False
+    print(f"debug: {debug}")
 
-    result = command_robot(action, message)
+    result = command_robot(action, message, debug)
     print(f"result: {result}")
     return {
         'statusCode': 200, 

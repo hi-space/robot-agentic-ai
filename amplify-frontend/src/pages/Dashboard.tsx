@@ -213,6 +213,18 @@ export default function Dashboard() {
         </Typography>
       </Box>
 
+      {/* Status section */}
+      <Card elevation={1} sx={{ mb: 4 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', }}>
+            <CheckCircleIcon sx={{ color: 'success.main', mr: 1, }} />
+            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+              애플리케이션이 정상적으로 실행 중입니다
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+
       {/* 통계 카드 */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3, mb: 4 }}>
         <StatCard>

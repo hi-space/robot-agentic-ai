@@ -25,21 +25,27 @@ async def strands_agent_bedrock_streaming(payload, context):
     with AgentCore Runtime using async generators
     """
     user_message = payload.get("prompt")
-    logger.info(f"Received user message: {user_message}")
+    debug = payload.get("debug", False)  # Add debug parameter, default to False
+    logger.info(f"Received user message: {user_message}, debug mode: {debug}")
 
     print("=== Runtime Context Information ===")
     print("Runtime Session ID:", context.session_id)
     print("Context Object Type:", type(context))
     print("User input:", user_message)
+    print("Debug mode:", debug)
     print("=== End Context Information ===")
 
     # Ensure agent is initialized
     logger.info("Checking agent initialization...")
-    if not agent_manager.ensure_initialized():
-        error_msg = "Failed to initialize agent. Please ensure MCP server is running correctly."
-        logger.error(error_msg)
-        logger.error(f"MCP server URL: {mcp_manager.config.mcp_server_url}")
-        logger.error(f"Bearer token available: {bool(mcp_manager.config.bearer_token)}")
+    if not agent_manager.ensure_initialized(debug=debug):
+        if debug:
+            error_msg = "Failed to initialize agent in debug mode. Please check local tools configuration."
+            logger.error(error_msg)
+        else:
+            error_msg = "Failed to initialize agent. Please ensure MCP server is running correctly."
+            logger.error(error_msg)
+            logger.error(f"MCP server URL: {mcp_manager.config.mcp_server_url}")
+            logger.error(f"Bearer token available: {bool(mcp_manager.config.bearer_token)}")
         yield {"error": error_msg}
         return
 

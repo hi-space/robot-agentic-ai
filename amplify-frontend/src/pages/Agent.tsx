@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -10,57 +10,57 @@ import {
   Chip,
   LinearProgress,
   Divider,
+  Switch,
+  FormControlLabel,
+  Tooltip,
+  Collapse,
+  IconButton,
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import {
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
-  Error as ErrorIcon,
-  PlayArrow as PlayIcon,
-  LocalFireDepartment as FireIcon,
-  GasMeter as GasIcon,
-  Group as PersonPinIcon,
-  DirectionsRun as DirectionsRunIcon,
-  DirectionsWalk as DirectionsWalkIcon,
-  SportsMartialArts as SportsMartialArtsIcon,
-  Favorite as FavoriteIcon,
-  Visibility as VisibilityIcon,
-  Summarize as SummarizeIcon,
-  Home as HomeIcon,
-  Refresh as RefreshIcon,
+  Navigation,
+  Pause,
+  Stop,
+  VerticalAlignTop,
+  VerticalAlignBottom,
+  WavingHand,
+  AccessibilityNew,
+  TouchApp,
+  MusicNote,
+  Favorite,
+  Security,
+  Assessment,
+  Home,
+  DirectionsRun,  
+  ExpandMore,
 } from '@mui/icons-material'
 import { invokeAgentCore, processAgentCoreStream, validateEnvironment } from '../lib/BedrockAgentCore'
 import { invokeRobotControl, mapButtonTextToAction, isRobotControlButton, RobotAction } from '../lib/LambdaClient'
 import ChatInterface from '../components/ChatInterface'
 import { useStreamingMessages } from '../hooks/useStreamingMessages'
+import { ttsService, TTSOptions } from '../lib/PollyTTS'
 import robotControlMapping from '../config/robotControlButton.json'
+import quickCommandMapping from '../config/quickCommandButton.json'
 
-// 아이콘 매핑 함수
+// 아이콘 매핑 함수 - 필요한 아이콘만 매핑
 const getIconComponent = (iconName: string) => {
   const iconMap: { [key: string]: React.ReactElement } = {
-    DirectionsRunIcon: <DirectionsRunIcon />,
-    DirectionsWalkIcon: <DirectionsWalkIcon />,
-    SportsMartialArtsIcon: <SportsMartialArtsIcon />,
-    FavoriteIcon: <FavoriteIcon />,
-    HomeIcon: <HomeIcon />,
-    RefreshIcon: <RefreshIcon />,
-    VisibilityIcon: <VisibilityIcon />,
-    SummarizeIcon: <SummarizeIcon />,
-    FireIcon: <FireIcon />,
-    GasIcon: <GasIcon />,
-    PersonPinIcon: <PersonPinIcon />,
+    Navigation: <Navigation />,
+    Pause: <Pause />,
+    Stop: <Stop />,
+    VerticalAlignTop: <VerticalAlignTop />,
+    VerticalAlignBottom: <VerticalAlignBottom />,
+    WavingHand: <WavingHand />,
+    AccessibilityNew: <AccessibilityNew />,
+    TouchApp: <TouchApp />,
+    MusicNote: <MusicNote />,
+    Favorite: <Favorite />,
+    Security: <Security />,
+    Assessment: <Assessment />,
+    Home: <Home />,
   }
-  return iconMap[iconName] || <DirectionsRunIcon />
-}
-
-// 타입 정의 
-
-interface Task {
-  id: string
-  name: string
-  status: 'pending' | 'in_progress' | 'completed' | 'failed'
-  progress?: number
-  timestamp: Date
+  
+  return iconMap[iconName] || <DirectionsRun />
 }
 
 interface AgentCoreStatus {
@@ -80,29 +80,40 @@ interface AIResponseStatus {
   isProcessing: boolean
 }
 
+interface TTSStatus {
+  isEnabled: boolean
+  isPlaying: boolean
+  isPaused: boolean
+  hasAudio: boolean
+  currentText: string
+  error: string | null
+}
+
 // 스타일드 컴포넌트
 const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: 12,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  border: `1px solid ${theme.palette.divider}`,
+  borderRadius: 20,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  border: `2px solid rgba(203, 213, 225, 0.9)`,
+  background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     borderColor: theme.palette.primary.light,
-    transform: 'translateY(-2px)',
+    transform: 'translateY(-4px)',
   },
 }))
 
-const StyledButton = styled(Button)(() => ({
-  borderRadius: 8,
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
   textTransform: 'none',
-  fontWeight: 500,
-  padding: '8px 16px',
+  fontWeight: 600,
+  padding: '12px 20px',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   fontSize: '0.875rem',
+  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
   '&:hover': {
     transform: 'translateY(-2px) scale(1.02)',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
   },
   '&:active': {
     transform: 'translateY(0) scale(0.98)',
@@ -113,13 +124,15 @@ const StyledButton = styled(Button)(() => ({
 const ResponsiveContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  height: 'calc(100vh - 64px)',
-  backgroundColor: theme.palette.grey[50],
+  height: 'calc(100vh - 64px - 28px)', // 헤더와 푸터 높이 제외
+  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
   width: '100%',
   padding: theme.spacing(3),
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  overflow: 'hidden', // 스크롤 방지
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+    height: 'calc(100vh - 64px - 28px)', // 작은 화면에서도 동일한 높이 계산
   },
   [theme.breakpoints.up('lg')]: {
     padding: theme.spacing(4),
@@ -150,14 +163,19 @@ const SidePanel = styled(Box)(({ theme }) => ({
   gap: theme.spacing(2),
   height: 'auto',
   flex: '0 0 auto',
+  maxHeight: 'calc(50vh - 100px)', // 작은 화면에서 최대 높이 제한
+  overflow: 'auto', // 스크롤 가능하도록
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('sm')]: {
     width: '100%',
+    maxHeight: 'calc(40vh - 80px)', // 중간 화면에서 높이 조정
   },
   [theme.breakpoints.up('md')]: {
     width: '350px',
     height: '100%',
     flex: '0 0 350px',
+    maxHeight: 'none', // 데스크톱에서는 높이 제한 없음
+    overflow: 'visible',
   },
   [theme.breakpoints.up('lg')]: {
     width: '380px',
@@ -176,15 +194,15 @@ const ChatPanel = styled(Box)(({ theme }) => ({
   flexDirection: 'column',
   minWidth: '100%',
   minHeight: 0,
-  height: '400px',
+  height: 'calc(100vh - 200px)', // 작은 화면에서도 충분한 높이 보장
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('sm')]: {
     minWidth: '100%',
-    height: '500px',
+    height: 'calc(100vh - 150px)', // 중간 화면에서 높이 증가
   },
   [theme.breakpoints.up('md')]: {
     minWidth: '500px',
-    height: '100%',
+    height: '100%', // 데스크톱에서는 전체 높이 사용
   },
   [theme.breakpoints.up('lg')]: {
     minWidth: '700px',
@@ -196,7 +214,7 @@ const ChatPanel = styled(Box)(({ theme }) => ({
 
 
 export default function Dashboard() {
-  const { messages, addMessage, updateMessage, appendToMessage, clearMessages } = useStreamingMessages()
+  const { messages, addMessage, updateMessage, appendToMessage, clearMessages, findMessageById } = useStreamingMessages()
   const [inputText, setInputText] = useState('')
   const [agentCoreStatus, setAgentCoreStatus] = useState<AgentCoreStatus>({
     isConnected: false,
@@ -212,50 +230,32 @@ export default function Dashboard() {
     isWaiting: false,
     isProcessing: false,
   })
+  const [ttsStatus, setTtsStatus] = useState<TTSStatus>({
+    isEnabled: false,
+    isPlaying: false,
+    isPaused: false,
+    hasAudio: false,
+    currentText: '',
+    error: null,
+  })
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
-  const [tasks] = useState<Task[]>([
-    {
-      id: '1',
-      name: '로봇 이동 명령',
-      status: 'in_progress',
-      progress: 75,
-      timestamp: new Date(Date.now() - 2 * 60 * 1000),
-    },
-    {
-      id: '2',
-      name: 'AI 명령 분석',
-      status: 'completed',
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-    },
-    {
-      id: '3',
-      name: '센서 데이터 수집',
-      status: 'pending',
-      timestamp: new Date(Date.now() - 10 * 60 * 1000),
-    },
-    {
-      id: '4',
-      name: '장애물 회피',
-      status: 'failed',
-      timestamp: new Date(Date.now() - 15 * 60 * 1000),
-    },
-    {
-      id: '5',
-      name: '사용자 응답 생성',
-      status: 'completed',
-      timestamp: new Date(Date.now() - 20 * 60 * 1000),
-    },
-  ])
-  // 초기 메시지 추가
+  const [debugMode, setDebugMode] = useState<boolean>(true) // Debug mode state
+  const [settingsExpanded, setSettingsExpanded] = useState<boolean>(false) // Settings card collapse state
+  const [robotControlExpanded, setRobotControlExpanded] = useState<boolean>(true) // Robot control card collapse state
+  const [quickCommandExpanded, setQuickCommandExpanded] = useState<boolean>(true) // Quick command card collapse state
+  const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
+  
+  // 초기 메시지 추가 (중복 방지 로직 포함)
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !hasInitialized.current) {
+      hasInitialized.current = true
       addMessage({
         type: 'chunk',
-        data: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
+        data: '안녕하세요! Robot Agentic RoboDog 입니다. 무엇을 도와드릴까요?',
         isUser: false,
       })
     }
-  }, [messages.length]) // addMessage 의존성 제거
+  }, [messages.length, addMessage])
 
   // AgentCore 연결 상태 확인
   useEffect(() => {
@@ -283,6 +283,13 @@ export default function Dashboard() {
     }
 
     checkAgentCoreConnection()
+  }, [])
+
+  // 컴포넌트 언마운트 시 TTS 정리
+  useEffect(() => {
+    return () => {
+      ttsService.stopAudio()
+    }
   }, [])
 
   const handleSendMessage = async (text: string) => {
@@ -323,8 +330,8 @@ export default function Dashboard() {
         isProcessing: true,
       })
 
-      // AgentCore 호출
-      const stream = await invokeAgentCore(text.trim(), currentSessionId)
+      // AgentCore 호출 (debug 모드 포함)
+      const stream = await invokeAgentCore(text.trim(), currentSessionId, debugMode)
       
       // 세션 ID 업데이트 (첫 번째 호출인 경우)
       if (!currentSessionId) {
@@ -337,6 +344,10 @@ export default function Dashboard() {
 
       await processAgentCoreStream(
         stream,
+        // onEvent: 전체 이벤트 처리
+        (event: any) => {
+          console.log('Event received:', event)
+        },
         // onChunk: 스트리밍 텍스트 처리
         (chunk: string) => {
           if (isFirstChunk) {
@@ -348,52 +359,103 @@ export default function Dashboard() {
             })
             lastMessageType = 'chunk'
             isFirstChunk = false
+            
           } else {
-            // 이후 청크들은 기존 메시지에 추가
-            appendToMessage(currentMessageId, chunk)
+            // tool_use 후에 오는 chunk는 별도 메시지로 생성하고 이전 tool_use 완료 처리
+            if (lastMessageType === 'tool_use') {
+              // 이전 tool_use 메시지를 완료 상태로 업데이트
+              if (currentMessageId) {
+                updateMessage(currentMessageId, {
+                  isComplete: true,
+                })
+              }
+              
+              currentMessageId = addMessage({
+                type: 'chunk',
+                data: chunk,
+                isUser: false,
+              })
+              lastMessageType = 'chunk'
+            } else if (lastMessageType === 'chunk') {
+              // 기존 chunk 메시지에 추가
+              if (currentMessageId) {
+                appendToMessage(currentMessageId, chunk)
+                
+              } else {
+                // currentMessageId가 없는 경우 새 메시지 생성
+                currentMessageId = addMessage({
+                  type: 'chunk',
+                  data: chunk,
+                  isUser: false,
+                })
+                lastMessageType = 'chunk'
+                
+              }
+            } else {
+              // 다른 타입 후에 오는 chunk는 새 메시지 생성
+              currentMessageId = addMessage({
+                type: 'chunk',
+                data: chunk,
+                isUser: false,
+              })
+              lastMessageType = 'chunk'
+            }
           }
         },
         // onToolUse: 도구 사용 정보 처리
-        (toolName: string, toolInput: any) => {
-          console.log('Tool use received:', { toolName, toolInput, lastMessageType })
-          if (lastMessageType === 'tool_use') {
-            // 이전 메시지가 tool_use 타입이면 tool_input에 텍스트 추가
-            const currentMessage = messages.find(msg => msg.id === currentMessageId)
-            if (currentMessage) {
-              const currentInput = currentMessage.tool_input || ''
-              const newInput = typeof toolInput === 'string' 
-                ? currentInput + toolInput 
-                : toolInput
-              console.log('Updating existing tool_use message:', { currentMessageId, newInput })
+        (toolName: string, toolInput: any, toolId?: string) => {
+          // tool_id가 다르면 이전 tool_use를 완료 상태로 업데이트하고 새로운 메시지 생성
+          const currentMessage = findMessageById(currentMessageId)
+          const shouldCreateNewMessage = lastMessageType !== 'tool_use' || 
+            (currentMessage && currentMessage.tool_id !== toolId)
+          
+          if (shouldCreateNewMessage) {
+            // 이전 tool_use 메시지가 있으면 완료 상태로 업데이트
+            if (lastMessageType === 'tool_use' && currentMessageId) {
               updateMessage(currentMessageId, {
-                tool_name: toolName,
-                tool_input: newInput,
+                isComplete: true,
               })
             }
-          } else {
+            
             // 새로운 tool_use 메시지 생성
             const toolMessageId = addMessage({
               type: 'tool_use',
               tool_name: toolName,
               tool_input: toolInput,
+              tool_id: toolId,
               isUser: false,
             })
-            console.log('Created new tool_use message:', { toolMessageId, toolName, toolInput })
             currentMessageId = toolMessageId
             lastMessageType = 'tool_use'
+          } else {
+            // 같은 tool_id면 기존 메시지의 tool_input을 업데이트 (스트리밍이므로 교체)
+            if (currentMessage) {
+              updateMessage(currentMessageId, {
+                tool_name: toolName,
+                tool_input: toolInput,
+                tool_id: toolId,
+              })
+            }
           }
         },
         // onReasoning: 추론 과정 처리
         (reasoning: string) => {
           if (lastMessageType === 'reasoning') {
             // 이전 메시지가 reasoning 타입이면 기존 메시지에 추가
-            const currentMessage = messages.find(msg => msg.id === currentMessageId)
+            const currentMessage = findMessageById(currentMessageId)
             if (currentMessage) {
               updateMessage(currentMessageId, {
                 reasoning_text: (currentMessage.reasoning_text || '') + reasoning,
               })
             }
           } else {
+            // tool_use 후에 오는 reasoning이면 이전 tool_use 완료 처리
+            if (lastMessageType === 'tool_use' && currentMessageId) {
+              updateMessage(currentMessageId, {
+                isComplete: true,
+              })
+            }
+            
             // 새로운 reasoning 메시지 생성
             const reasoningMessageId = addMessage({
               type: 'reasoning',
@@ -406,12 +468,26 @@ export default function Dashboard() {
         },
         // onComplete: 최종 응답 처리
         (finalResponse: string) => {
-          updateMessage(currentMessageId, {
-            type: 'complete',
-            data: finalResponse,
-            isComplete: true,
-          })
+          // 현재 메시지가 tool_use 타입이면 완료 상태로 업데이트
+          if (lastMessageType === 'tool_use') {
+            updateMessage(currentMessageId, {
+              isComplete: true,
+            })
+          } else {
+            // chunk 메시지면 complete 타입으로 변경
+            updateMessage(currentMessageId, {
+              type: 'complete',
+              data: finalResponse,
+              isComplete: true,
+            })
+          }
           lastMessageType = 'complete'
+          
+          // TTS 재생 (AI 응답이 완료되면)
+          if (ttsStatus.isEnabled && finalResponse.trim()) {
+            handleTTSPlay(finalResponse)
+          }
+          
           // AI 응답 완료
           setAiResponseStatus({
             isWaiting: false,
@@ -472,7 +548,7 @@ export default function Dashboard() {
         const response = await invokeRobotControl({ 
           action: buttonInfo.action as RobotAction,
           message: buttonInfo.message 
-        })
+        }, debugMode)
         
         if (response.statusCode === 200 && response.body) {
           addMessage({
@@ -512,224 +588,451 @@ export default function Dashboard() {
 
   const handleResetChat = () => {
     clearMessages()
-    // useEffect에서 자동으로 초기 메시지가 추가되므로 여기서는 추가하지 않음
+    hasInitialized.current = false // 리셋 시 초기화 상태도 리셋
+    // TTS 정리
+    ttsService.stopAudio()
+    setTtsStatus(prev => ({
+      ...prev,
+      isPlaying: false,
+      isPaused: false,
+      hasAudio: false,
+      currentText: '',
+      error: null,
+    }))
+  }
+
+  // TTS 관련 함수들
+  const handleTTSPlay = async (text: string) => {
+    if (!ttsStatus.isEnabled || !text.trim()) return
+
+    try {
+      setTtsStatus(prev => ({ ...prev, error: null }))
+      await ttsService.speak(text)
+      
+      // 재생 상태 업데이트
+      const playbackState = ttsService.getPlaybackState()
+      setTtsStatus(prev => ({
+        ...prev,
+        isPlaying: playbackState.isPlaying,
+        isPaused: playbackState.isPaused,
+        hasAudio: playbackState.hasAudio,
+        currentText: text,
+      }))
+    } catch (error) {
+      console.error('TTS 재생 실패:', error)
+      setTtsStatus(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'TTS 재생 실패',
+        isPlaying: false,
+        isPaused: false,
+      }))
+    }
+  }
+
+  const handleTTSPause = () => {
+    ttsService.pauseAudio()
+    setTtsStatus(prev => ({ ...prev, isPaused: true, isPlaying: false }))
+  }
+
+  const handleTTSResume = () => {
+    ttsService.resumeAudio()
+    setTtsStatus(prev => ({ ...prev, isPaused: false, isPlaying: true }))
+  }
+
+  const handleTTSStop = () => {
+    ttsService.stopAudio()
+    setTtsStatus(prev => ({
+      ...prev,
+      isPlaying: false,
+      isPaused: false,
+      hasAudio: false,
+      currentText: '',
+    }))
+  }
+
+  const handleTTSToggle = () => {
+    if (ttsStatus.isPlaying) {
+      handleTTSStop()
+    } else if (ttsStatus.isPaused) {
+      handleTTSResume()
+    } else if (ttsStatus.currentText) {
+      handleTTSPlay(ttsStatus.currentText)
+    }
   }
 
   // 전체 비활성화 상태 계산
   const isDisabled = robotControlStatus.isExecuting || aiResponseStatus.isWaiting || aiResponseStatus.isProcessing
-
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircleIcon />
-      case 'in_progress':
-        return <PlayIcon />
-      case 'pending':
-        return <ScheduleIcon />
-      case 'failed':
-        return <ErrorIcon />
-      default:
-        return null
-    }
-  }
-
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'completed':
-        return 'success'
-      case 'in_progress':
-        return 'primary'
-      case 'pending':
-        return 'warning'
-      case 'failed':
-        return 'error'
-      default:
-        return 'default'
-    }
-  }
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ko-KR', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit',
-      hour12: false 
-    })
-  }
 
   return (
     <ResponsiveContainer>
       <MainLayout>
         {/* 왼쪽 패널 - 제어 버튼들 */}
         <SidePanel>
-          {/* 대화 리셋 버튼 */}
+          
+       
+          {/* 로봇 제어 패널 - 접을 수 있는 카드 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
             '&:hover': {
               transform: 'translateY(-4px)',
             }
           }}>
-            <CardContent sx={{ p: 2 }}>
-              <StyledButton
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                startIcon={<RefreshIcon />}
-                disabled={isDisabled}
-                onClick={handleResetChat}
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box 
                 sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.875rem', md: '0.9rem' }, 
-                  py: { xs: 1.2, sm: 1.5, md: 1.5 },
-                  minHeight: { xs: '44px', sm: '48px', md: '52px' },
-                  borderColor: 'error.main',
-                  color: 'error.main',
-                  '&:hover': {
-                    borderColor: 'error.dark',
-                    backgroundColor: 'error.light',
-                    color: 'error.dark'
-                  }
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  mb: robotControlExpanded ? 2 : 0,
+                  cursor: 'pointer',
+                  py: 0.5,
+                  px: 0.5
                 }}
+                onClick={() => setRobotControlExpanded(!robotControlExpanded)}
               >
-                대화내용 리셋
-              </StyledButton>
-            </CardContent>
-          </StyledCard>
-
-          {/* 로봇 제어 패널 */}
-          <StyledCard sx={{ 
-            flex: '0 0 auto',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-            }
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary', 
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
                   로봇 제어
                 </Typography>
-                {robotControlStatus.isExecuting && (
-                  <LinearProgress sx={{ width: 60, height: 4, borderRadius: 2 }} />
-                )}
-              </Box>
-              {robotControlStatus.lastAction && (
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontSize: '0.75rem' }}>
-                  마지막 실행: {robotControlStatus.lastAction}
-                </Typography>
-              )}
-              {robotControlStatus.error && (
-                <Typography variant="caption" color="error" sx={{ mb: 1, display: 'block', fontSize: '0.75rem' }}>
-                  오류: {robotControlStatus.error}
-                </Typography>
-              )}
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: { 
-                  xs: '1fr', 
-                  sm: '1fr 1fr', 
-                  md: '1fr 1fr',
-                  lg: '1fr 1fr 1fr',
-                  xl: '1fr 1fr 1fr'
-                }, 
-                gap: { xs: 1, sm: 1.5, md: 2 },
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}>
-                {robotControlMapping.robotControlButtons.map((button, index) => (
-                  <StyledButton
-                    key={index}
-                    variant="contained"
-                    color={button.color as any}
-                    fullWidth
-                    startIcon={getIconComponent(button.icon)}
-                    disabled={isDisabled}
-                    onClick={() => handleButtonClick(button.text)}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {robotControlStatus.isExecuting && (
+                    <LinearProgress sx={{ width: 40, height: 3, borderRadius: 2 }} />
+                  )}
+                  <IconButton 
+                    size="small"
                     sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
-                      py: { xs: 1, sm: 1.5, md: 1.5 },
-                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
+                      transform: robotControlExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      p: 0.5,
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                      }
                     }}
                   >
-                    {button.text}
-                  </StyledButton>
-                ))}
+                    <ExpandMore />
+                  </IconButton>
+                </Box>
               </Box>
+              
+              <Collapse in={robotControlExpanded}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  {robotControlStatus.lastAction && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      마지막 실행: {robotControlStatus.lastAction}
+                    </Typography>
+                  )}
+                  {robotControlStatus.error && (
+                    <Typography variant="caption" color="error" sx={{ fontSize: '0.75rem' }}>
+                      오류: {robotControlStatus.error}
+                    </Typography>
+                  )}
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: { 
+                      xs: '1fr', 
+                      sm: '1fr 1fr', 
+                      md: '1fr 1fr',
+                      lg: '1fr 1fr',
+                      xl: '1fr 1fr'
+                    }, 
+                    gap: { xs: 1, sm: 1.5, md: 2 },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                    {robotControlMapping.robotControlButtons.map((button, index) => {
+                      // 버튼 색상별 그라데이션 정의 - 더 세련된 색상
+                      const getButtonGradient = (color: string) => {
+                        switch (color) {
+                          case 'primary':
+                            return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' // 블루-바이올렛
+                          case 'secondary':
+                            return 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' // 바이올렛-핑크
+                          case 'success':
+                            return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' // 그린
+                          case 'warning':
+                            return 'linear-gradient(135deg, #f59e0b 0%, #eab308 100%)' // 앰버-옐로우
+                          case 'error':
+                            return 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)' // 레드-핑크
+                          case 'info':
+                            return 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' // 시안-블루
+                          default:
+                            return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
+                        }
+                      }
+
+                      const getButtonHoverGradient = (color: string) => {
+                        switch (color) {
+                          case 'primary':
+                            return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
+                          case 'secondary':
+                            return 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)'
+                          case 'success':
+                            return 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
+                          case 'warning':
+                            return 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)'
+                          case 'error':
+                            return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                          case 'info':
+                            return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                          default:
+                            return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
+                        }
+                      }
+
+                      return (
+                        <StyledButton
+                          key={index}
+                          variant="contained"
+                          fullWidth
+                          startIcon={getIconComponent(button.icon)}
+                          disabled={isDisabled}
+                          onClick={() => handleButtonClick(button.text)}
+                          sx={{ 
+                            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' }, 
+                            py: { xs: 1, sm: 1.5, md: 1.5 },
+                            minHeight: { xs: '40px', sm: '44px', md: '48px' },
+                            background: getButtonGradient(button.color),
+                            color: 'white',
+                            fontWeight: 600,
+                            '&:hover': {
+                              background: getButtonHoverGradient(button.color),
+                              transform: 'translateY(-2px)',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: 'white',
+                            }
+                          }}
+                        >
+                          {button.text}
+                        </StyledButton>
+                      )
+                    })}
+                  </Box>
+                </Box>
+              </Collapse>
             </CardContent>
           </StyledCard>
 
-          {/* 채팅 패널 */}
+          {/* 빠른 명령 패널 - 접을 수 있는 카드 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
             '&:hover': {
               transform: 'translateY(-4px)',
             }
           }}>
-            <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                빠른 명령
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {[
-                  { text: '위험 상황 감시해줘', icon: <VisibilityIcon /> },
-                  { text: '어떤 일들이 있었는지 요약해줘', icon: <SummarizeIcon /> },
-                  { text: '모든 감시가 끝났으니 돌아와', icon: <HomeIcon /> }
-                ].map((item, index) => (
-                  <StyledButton
-                    key={index}
-                    variant="outlined"
-                    fullWidth
-                    startIcon={item.icon}
-                    disabled={isDisabled}
-                    onClick={() => handleButtonClick(item.text)}
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
-                      textAlign: 'left', 
-                      py: { xs: 1, sm: 1.5, md: 1.5 },
-                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
-                    }}
-                  >
-                    {item.text}
-                  </StyledButton>
-                ))}
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  mb: quickCommandExpanded ? 2 : 0,
+                  cursor: 'pointer',
+                  py: 0.5,
+                  px: 0.5
+                }}
+                onClick={() => setQuickCommandExpanded(!quickCommandExpanded)}
+              >
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary', 
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  빠른 명령
+                </Typography>
+                <IconButton 
+                  size="small"
+                  sx={{ 
+                    transform: quickCommandExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    p: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
+                >
+                  <ExpandMore />
+                </IconButton>
               </Box>
+              
+              <Collapse in={quickCommandExpanded}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {quickCommandMapping.quickCommandButtons.map((button, index) => (
+                      <StyledButton
+                        key={index}
+                        variant="outlined"
+                        fullWidth
+                        startIcon={getIconComponent(button.icon)}
+                        disabled={isDisabled}
+                        onClick={() => handleButtonClick(button.text)}
+                        sx={{ 
+                          fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' }, 
+                          textAlign: 'left', 
+                          py: { xs: 1, sm: 1.5, md: 1.5 },
+                          minHeight: { xs: '40px', sm: '44px', md: '48px' }
+                        }}
+                      >
+                        {button.text}
+                      </StyledButton>
+                    ))}
+                  </Box>
+                </Box>
+              </Collapse>
             </CardContent>
           </StyledCard>
 
-          {/* 이슈 제기 패널 */}
+          {/* 설정 패널 - 접을 수 있는 카드 */}
           <StyledCard sx={{ 
             flex: '0 0 auto',
             '&:hover': {
               transform: 'translateY(-4px)',
             }
           }}>
-            <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                긴급 신고
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {[
-                  { text: '화재 발생', icon: <FireIcon />, color: 'error' },
-                  { text: '가스 유출', icon: <GasIcon />, color: 'warning' },
-                  { text: '작업자 사고 감지', icon: <PersonPinIcon />, color: 'info' },
-                ].map((item, index) => (
-                  <StyledButton
-                    key={index}
-                    variant="contained"
-                    color={item.color as any}
-                    fullWidth
-                    startIcon={item.icon}
-                    disabled={isDisabled}
-                    onClick={() => handleButtonClick(item.text)}
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
-                      py: { xs: 1, sm: 1.5, md: 1.5 },
-                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
-                    }}
-                  >
-                    {item.text}
-                  </StyledButton>
-                ))}
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  mb: settingsExpanded ? 2 : 0,
+                  cursor: 'pointer',
+                  py: 0.5,
+                  px: 0.5
+                }}
+                onClick={() => setSettingsExpanded(!settingsExpanded)}
+              >
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary', 
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  설정
+                </Typography>
+                <IconButton 
+                  size="small"
+                  sx={{ 
+                    transform: settingsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    p: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
+                >
+                  <ExpandMore />
+                </IconButton>
               </Box>
+              
+              <Collapse in={settingsExpanded}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  {/* Debug 모드 토글 */}
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 600, 
+                        color: 'text.primary', 
+                        fontSize: '0.9rem',
+                        lineHeight: 1.2
+                      }}>
+                        로봇 제어 생략
+                      </Typography>
+                      <Tooltip title={debugMode ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" : "로봇 제어 기능 On (MCP 서버 연동)"}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={debugMode}
+                              onChange={(e) => setDebugMode(e.target.checked)}
+                              color="primary"
+                              disabled={isDisabled}
+                              size="small"
+                            />
+                          }
+                          label={debugMode ? "ON" : "OFF"}
+                          labelPlacement="end"
+                          sx={{ m: 0 }}
+                        />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {debugMode 
+                        ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" 
+                        : "로봇 제어 기능 On (MCP 서버 연동)"
+                      }
+                    </Typography>
+                  </Box>
+
+                  <Divider />
+
+                  {/* TTS 설정 토글 */}
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 600, 
+                        color: 'text.primary', 
+                        fontSize: '0.9rem',
+                        lineHeight: 1.2
+                      }}>
+                        음성 출력 (TTS)
+                      </Typography>
+                      <Tooltip title={ttsStatus.isEnabled ? "TTS 기능 활성화" : "TTS 기능 비활성화"}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={ttsStatus.isEnabled}
+                              onChange={(e) => {
+                                const newEnabled = e.target.checked
+                                if (!newEnabled) {
+                                  // TTS를 끌 때 기존 재생 중인 오디오 정지
+                                  ttsService.stopAudio()
+                                  setTtsStatus(prev => ({
+                                    ...prev,
+                                    isEnabled: newEnabled,
+                                    isPlaying: false,
+                                    isPaused: false,
+                                    hasAudio: false,
+                                    currentText: '',
+                                    error: null,
+                                  }))
+                                } else {
+                                  // TTS를 켤 때는 단순히 활성화만
+                                  setTtsStatus(prev => ({ ...prev, isEnabled: newEnabled }))
+                                }
+                              }}
+                              color="primary"
+                              disabled={isDisabled}
+                              size="small"
+                            />
+                          }
+                          label={ttsStatus.isEnabled ? "ON" : "OFF"}
+                          labelPlacement="end"
+                          sx={{ m: 0 }}
+                        />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {ttsStatus.isEnabled 
+                        ? "각 메시지의 재생 버튼을 클릭하여 음성으로 들을 수 있습니다" 
+                        : "TTS 기능이 비활성화되었습니다"
+                      }
+                    </Typography>
+                  </Box>
+                </Box>
+              </Collapse>
             </CardContent>
           </StyledCard>
+          
         </SidePanel>
 
         {/* 중앙 패널 - 채팅 인터페이스 */}
@@ -742,92 +1045,13 @@ export default function Dashboard() {
             onResetChat={handleResetChat}
             agentCoreStatus={agentCoreStatus}
             isDisabled={isDisabled}
+            onTTSPlay={handleTTSPlay}
+            onTTSPause={handleTTSPause}
+            onTTSStop={handleTTSStop}
+            ttsStatus={ttsStatus}
           />
         </ChatPanel>
 
-        {/* 오른쪽 패널 - 작업 상태 */}
-        <SidePanel>
-          <StyledCard sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: 0,
-            '&:hover': {
-              transform: 'translateY(-4px)',
-            }
-          }}>
-            <CardContent sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                작업 현황
-              </Typography>
-              <List sx={{ p: 0, flex: 1, overflow: 'auto' }}>
-                {tasks.map((task, index) => (
-                  <React.Fragment key={task.id}>
-                    <ListItem sx={{ 
-                      px: 0, 
-                      py: 1.5, 
-                      flexDirection: 'column', 
-                      alignItems: 'stretch',
-                      borderRadius: 2,
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      '&:hover': {
-                        backgroundColor: 'action.hover',
-                        transform: 'translateX(4px)',
-                      }
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, flexGrow: 1, fontSize: '0.875rem' }}>
-                          {task.name}
-                        </Typography>
-                        <Box sx={{ color: getStatusColor(task.status) === 'success' ? 'success.main' : 
-                                          getStatusColor(task.status) === 'error' ? 'error.main' :
-                                          getStatusColor(task.status) === 'warning' ? 'warning.main' : 'primary.main' }}>
-                          {getStatusIcon(task.status)}
-                        </Box>
-                      </Box>
-                      
-                      {task.progress !== undefined && (
-                        <Box sx={{ mb: 1.5 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={task.progress}
-                            sx={{ 
-                              height: 4, 
-                              borderRadius: 2,
-                              bgcolor: 'grey.200',
-                              '& .MuiLinearProgress-bar': {
-                                borderRadius: 2
-                              }
-                            }}
-                          />
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.75rem' }}>
-                            {task.progress}%
-                          </Typography>
-                        </Box>
-                      )}
-                      
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Chip
-                          label={task.status === 'in_progress' ? '진행중' : 
-                                 task.status === 'completed' ? '완료' :
-                                 task.status === 'pending' ? '대기' : '실패'}
-                          color={getStatusColor(task.status) as any}
-                          size="small"
-                          variant={task.status === 'pending' ? 'outlined' : 'filled'}
-                          sx={{ fontSize: '0.75rem', height: 24 }}
-                        />
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          {formatTime(task.timestamp)}
-                        </Typography>
-                      </Box>
-                    </ListItem>
-                    {index < tasks.length - 1 && <Divider sx={{ my: 1 }} />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </CardContent>
-          </StyledCard>
-        </SidePanel>
       </MainLayout>
     </ResponsiveContainer>
   )

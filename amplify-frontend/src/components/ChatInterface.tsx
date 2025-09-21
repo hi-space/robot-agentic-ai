@@ -22,26 +22,35 @@ import { StreamMessage } from './StreamingMessage'
 
 // 스타일드 컴포넌트
 const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: 12,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  border: `1px solid ${theme.palette.divider}`,
-  transition: 'all 0.2s ease',
+  borderRadius: 20,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  border: `1px solid rgba(226, 232, 240, 0.8)`,
+  background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     borderColor: theme.palette.primary.light,
+    transform: 'translateY(-2px)',
   },
 }))
 
-const StyledButton = styled(Button)(() => ({
-  borderRadius: 8,
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
   textTransform: 'none',
-  fontWeight: 500,
-  padding: '8px 16px',
-  transition: 'all 0.2s ease',
+  fontWeight: 600,
+  padding: '12px 20px',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   fontSize: '0.875rem',
+  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
   '&:hover': {
-    transform: 'translateY(-1px)',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  },
+  '&.MuiButton-contained': {
+    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    '&:hover': {
+      background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+    },
   },
 }))
 
@@ -59,6 +68,16 @@ interface ChatInterfaceProps {
   onResetChat: () => void
   agentCoreStatus: AgentCoreStatus
   isDisabled?: boolean
+  onTTSPlay?: (text: string) => void
+  onTTSPause?: () => void
+  onTTSStop?: () => void
+  ttsStatus?: {
+    isEnabled: boolean
+    isPlaying: boolean
+    isPaused: boolean
+    hasAudio: boolean
+    currentText: string
+  }
 }
 
 export default function ChatInterface({
@@ -69,6 +88,10 @@ export default function ChatInterface({
   onResetChat,
   agentCoreStatus,
   isDisabled = false,
+  onTTSPlay,
+  onTTSPause,
+  onTTSStop,
+  ttsStatus,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -88,7 +111,13 @@ export default function ChatInterface({
   }
 
   return (
-    <StyledCard sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <StyledCard sx={{ 
+      flex: 1, 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: '400px', // 최소 높이 보장
+      height: '100%' // 부모 컨테이너의 높이를 모두 사용
+    }}>
       {/* 채팅 헤더 */}
       <Box sx={{ 
         p: 2, 
@@ -97,17 +126,18 @@ export default function ChatInterface({
         display: 'flex', 
         alignItems: 'center', 
         gap: 2,
-        bgcolor: 'white',
-        borderRadius: '12px 12px 0 0'
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        color: 'white',
+        borderRadius: '20px 20px 0 0'
       }}>
-        <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+        <Avatar sx={{ bgcolor: 'rgba(255, 255, 255, 0.2)', width: 36, height: 36 }}>
           <RobotIcon />
         </Avatar>
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-            Robot AgenticAI
+          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem', color: 'white' }}>
+            Agentic RoboDog
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
             AI를 통해 실시간 로봇 제어 및 모니터링
           </Typography>
         </Box>
@@ -117,16 +147,24 @@ export default function ChatInterface({
           color={agentCoreStatus.isLoading ? "warning" : 
                  agentCoreStatus.isConnected ? "success" : "error"} 
           size="small" 
-          sx={{ ml: 'auto' }} 
+          sx={{ 
+            ml: 'auto',
+            background: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            '& .MuiChip-label': {
+              color: 'white',
+            }
+          }} 
         />
         <IconButton
           onClick={onResetChat}
           size="small"
           disabled={isDisabled}
           sx={{ 
-            color: 'error.main',
+            color: 'white',
             '&:hover': {
-              backgroundColor: 'error.light',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
             }
           }}
         >
@@ -151,13 +189,17 @@ export default function ChatInterface({
         p: 2, 
         overflow: 'auto', 
         minHeight: 0,
-        bgcolor: 'grey.50'
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
       }}>
         {messages.map((message) => (
           <StreamingMessage
             key={message.id}
             message={message}
             isUser={message.isUser ?? false}
+            onTTSPlay={onTTSPlay}
+            onTTSPause={onTTSPause}
+            onTTSStop={onTTSStop}
+            ttsStatus={ttsStatus}
           />
         ))}
         <div ref={messagesEndRef} />
@@ -168,8 +210,8 @@ export default function ChatInterface({
         p: 2, 
         borderTop: 1, 
         borderColor: 'divider',
-        bgcolor: 'white',
-        borderRadius: '0 0 12px 12px'
+        background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
+        borderRadius: '0 0 20px 20px'
       }}>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end' }}>
           <TextField
@@ -195,12 +237,22 @@ export default function ChatInterface({
             onClick={() => onSendMessage(inputText)}
             disabled={!inputText.trim() || isDisabled}
             sx={{ 
-              bgcolor: 'primary.main', 
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
               color: 'white', 
               width: 40,
               height: 40,
-              '&:hover': { bgcolor: 'primary.dark' },
-              '&:disabled': { bgcolor: 'grey.300' }
+              borderRadius: 2,
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              '&:hover': { 
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              },
+              '&:disabled': { 
+                background: 'linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)',
+                transform: 'none',
+                boxShadow: 'none'
+              }
             }}
           >
             <SendIcon />
