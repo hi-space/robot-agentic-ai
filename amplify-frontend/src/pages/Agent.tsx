@@ -80,7 +80,7 @@ interface AIResponseStatus {
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: 20,
   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  border: `1px solid rgba(226, 232, 240, 0.8)`,
+  border: `2px solid rgba(203, 213, 225, 0.9)`,
   background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
@@ -104,14 +104,6 @@ const StyledButton = styled(Button)(({ theme }) => ({
   },
   '&:active': {
     transform: 'translateY(0) scale(0.98)',
-  },
-  // 기본 contained 스타일 제거 - 개별 버튼에서 오버라이드
-  '&.MuiButton-outlined': {
-    borderWidth: 2,
-    '&:hover': {
-      borderWidth: 2,
-      backgroundColor: 'rgba(99, 102, 241, 0.04)',
-    },
   },
 }))
 
@@ -330,11 +322,36 @@ export default function Dashboard() {
             lastMessageType = 'chunk'
             isFirstChunk = false
           } else {
-            // 이후 청크들은 기존 메시지에 추가
-            if (currentMessageId) {
-              appendToMessage(currentMessageId, chunk)
+            // tool_use 후에 오는 chunk는 별도 메시지로 생성하고 이전 tool_use 완료 처리
+            if (lastMessageType === 'tool_use') {
+              // 이전 tool_use 메시지를 완료 상태로 업데이트
+              if (currentMessageId) {
+                updateMessage(currentMessageId, {
+                  isComplete: true,
+                })
+              }
+              
+              currentMessageId = addMessage({
+                type: 'chunk',
+                data: chunk,
+                isUser: false,
+              })
+              lastMessageType = 'chunk'
+            } else if (lastMessageType === 'chunk') {
+              // 기존 chunk 메시지에 추가
+              if (currentMessageId) {
+                appendToMessage(currentMessageId, chunk)
+              } else {
+                // currentMessageId가 없는 경우 새 메시지 생성
+                currentMessageId = addMessage({
+                  type: 'chunk',
+                  data: chunk,
+                  isUser: false,
+                })
+                lastMessageType = 'chunk'
+              }
             } else {
-              // currentMessageId가 없는 경우 새 메시지 생성
+              // 다른 타입 후에 오는 chunk는 새 메시지 생성
               currentMessageId = addMessage({
                 type: 'chunk',
                 data: chunk,
@@ -345,30 +362,39 @@ export default function Dashboard() {
           }
         },
         // onToolUse: 도구 사용 정보 처리
-        (toolName: string, toolInput: any) => {
-          if (lastMessageType === 'tool_use') {
-            // 이전 메시지가 tool_use 타입이면 tool_input에 텍스트 추가
-            const currentMessage = findMessageById(currentMessageId)
-            if (currentMessage) {
-              const currentInput = currentMessage.tool_input || ''
-              const newInput = typeof toolInput === 'string' 
-                ? currentInput + toolInput 
-                : toolInput
+        (toolName: string, toolInput: any, toolId?: string) => {
+          // tool_id가 다르면 이전 tool_use를 완료 상태로 업데이트하고 새로운 메시지 생성
+          const currentMessage = findMessageById(currentMessageId)
+          const shouldCreateNewMessage = lastMessageType !== 'tool_use' || 
+            (currentMessage && currentMessage.tool_id !== toolId)
+          
+          if (shouldCreateNewMessage) {
+            // 이전 tool_use 메시지가 있으면 완료 상태로 업데이트
+            if (lastMessageType === 'tool_use' && currentMessageId) {
               updateMessage(currentMessageId, {
-                tool_name: toolName,
-                tool_input: newInput,
+                isComplete: true,
               })
             }
-          } else {
+            
             // 새로운 tool_use 메시지 생성
             const toolMessageId = addMessage({
               type: 'tool_use',
               tool_name: toolName,
               tool_input: toolInput,
+              tool_id: toolId,
               isUser: false,
             })
             currentMessageId = toolMessageId
             lastMessageType = 'tool_use'
+          } else {
+            // 같은 tool_id면 기존 메시지의 tool_input을 업데이트 (스트리밍이므로 교체)
+            if (currentMessage) {
+              updateMessage(currentMessageId, {
+                tool_name: toolName,
+                tool_input: toolInput,
+                tool_id: toolId,
+              })
+            }
           }
         },
         // onReasoning: 추론 과정 처리
@@ -382,6 +408,13 @@ export default function Dashboard() {
               })
             }
           } else {
+            // tool_use 후에 오는 reasoning이면 이전 tool_use 완료 처리
+            if (lastMessageType === 'tool_use' && currentMessageId) {
+              updateMessage(currentMessageId, {
+                isComplete: true,
+              })
+            }
+            
             // 새로운 reasoning 메시지 생성
             const reasoningMessageId = addMessage({
               type: 'reasoning',
@@ -394,11 +427,19 @@ export default function Dashboard() {
         },
         // onComplete: 최종 응답 처리
         (finalResponse: string) => {
-          updateMessage(currentMessageId, {
-            type: 'complete',
-            data: finalResponse,
-            isComplete: true,
-          })
+          // 현재 메시지가 tool_use 타입이면 완료 상태로 업데이트
+          if (lastMessageType === 'tool_use') {
+            updateMessage(currentMessageId, {
+              isComplete: true,
+            })
+          } else {
+            // chunk 메시지면 complete 타입으로 변경
+            updateMessage(currentMessageId, {
+              type: 'complete',
+              data: finalResponse,
+              isComplete: true,
+            })
+          }
           lastMessageType = 'complete'
           // AI 응답 완료
           setAiResponseStatus({
@@ -600,7 +641,7 @@ export default function Dashboard() {
                       disabled={isDisabled}
                       onClick={() => handleButtonClick(button.text)}
                       sx={{ 
-                        fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
+                        fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' }, 
                         py: { xs: 1, sm: 1.5, md: 1.5 },
                         minHeight: { xs: '40px', sm: '44px', md: '48px' },
                         background: getButtonGradient(button.color),
@@ -644,7 +685,7 @@ export default function Dashboard() {
                     disabled={isDisabled}
                     onClick={() => handleButtonClick(button.text)}
                     sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
+                      fontSize: { xs: '0.95rem', sm: '1rem', md: '1.05rem' }, 
                       textAlign: 'left', 
                       py: { xs: 1, sm: 1.5, md: 1.5 },
                       minHeight: { xs: '40px', sm: '44px', md: '48px' }

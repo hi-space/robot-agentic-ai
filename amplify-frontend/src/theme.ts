@@ -149,7 +149,7 @@ const theme = createTheme({
         root: {
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
           borderRadius: 16,
-          border: '1px solid rgba(226, 232, 240, 0.8)',
+          border: '2px solid rgba(203, 213, 225, 0.9)',
           background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {

@@ -1,6 +1,16 @@
 {
   "quickCommandButtons": [
     {
+      "text": "하이",
+      "icon": "Security",
+      "color": "warning"
+    },
+    {
+      "text": "앉아봐라",
+      "icon": "Security",
+      "color": "warning"
+    },
+    {
       "text": "위험 상황 감시해줘",
       "icon": "Security",
       "color": "error"

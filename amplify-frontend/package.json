@@ -22,6 +22,7 @@
     "@mui/lab": "^7.0.0-beta.17",
     "@mui/material": "^7.3.2",
     "@mui/x-date-pickers": "^8.11.1",
+    "@uiw/react-json-view": "^2.0.0-alpha.38",
     "aws-amplify": "^6.15.5",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
