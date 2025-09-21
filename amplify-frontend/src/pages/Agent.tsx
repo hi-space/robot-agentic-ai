@@ -16,44 +16,47 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import {
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
-  Error as ErrorIcon,
-  PlayArrow as PlayIcon,
-  LocalFireDepartment as FireIcon,
-  GasMeter as GasIcon,
-  Group as PersonPinIcon,
-  DirectionsRun as DirectionsRunIcon,
-  DirectionsWalk as DirectionsWalkIcon,
-  SportsMartialArts as SportsMartialArtsIcon,
-  Favorite as FavoriteIcon,
-  Visibility as VisibilityIcon,
-  Summarize as SummarizeIcon,
-  Home as HomeIcon,
-  Refresh as RefreshIcon,
+  Navigation,
+  Pause,
+  Stop,
+  VerticalAlignTop,
+  VerticalAlignBottom,
+  WavingHand,
+  AccessibilityNew,
+  TouchApp,
+  MusicNote,
+  Favorite,
+  Security,
+  Assessment,
+  Home,
+  DirectionsRun,
 } from '@mui/icons-material'
 import { invokeAgentCore, processAgentCoreStream, validateEnvironment } from '../lib/BedrockAgentCore'
 import { invokeRobotControl, mapButtonTextToAction, isRobotControlButton, RobotAction } from '../lib/LambdaClient'
 import ChatInterface from '../components/ChatInterface'
 import { useStreamingMessages } from '../hooks/useStreamingMessages'
 import robotControlMapping from '../config/robotControlButton.json'
+import quickCommandMapping from '../config/quickCommandButton.json'
 
-// 아이콘 매핑 함수
+// 아이콘 매핑 함수 - 필요한 아이콘만 매핑
 const getIconComponent = (iconName: string) => {
   const iconMap: { [key: string]: React.ReactElement } = {
-    DirectionsRunIcon: <DirectionsRunIcon />,
-    DirectionsWalkIcon: <DirectionsWalkIcon />,
-    SportsMartialArtsIcon: <SportsMartialArtsIcon />,
-    FavoriteIcon: <FavoriteIcon />,
-    HomeIcon: <HomeIcon />,
-    RefreshIcon: <RefreshIcon />,
-    VisibilityIcon: <VisibilityIcon />,
-    SummarizeIcon: <SummarizeIcon />,
-    FireIcon: <FireIcon />,
-    GasIcon: <GasIcon />,
-    PersonPinIcon: <PersonPinIcon />,
+    Navigation: <Navigation />,
+    Pause: <Pause />,
+    Stop: <Stop />,
+    VerticalAlignTop: <VerticalAlignTop />,
+    VerticalAlignBottom: <VerticalAlignBottom />,
+    WavingHand: <WavingHand />,
+    AccessibilityNew: <AccessibilityNew />,
+    TouchApp: <TouchApp />,
+    MusicNote: <MusicNote />,
+    Favorite: <Favorite />,
+    Security: <Security />,
+    Assessment: <Assessment />,
+    Home: <Home />,
   }
-  return iconMap[iconName] || <DirectionsRunIcon />
+  
+  return iconMap[iconName] || <DirectionsRun />
 }
 
 interface AgentCoreStatus {
@@ -307,12 +310,6 @@ export default function Dashboard() {
         },
         // onChunk: 스트리밍 텍스트 처리
         (chunk: string) => {
-          console.log('🎯 Chunk received in Agent.tsx:', { 
-            chunk: chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''), 
-            chunkLength: chunk.length,
-            isFirstChunk, 
-            currentMessageId 
-          })
           if (isFirstChunk) {
             // 첫 번째 청크가 오면 새 메시지 생성
             currentMessageId = addMessage({
@@ -322,13 +319,10 @@ export default function Dashboard() {
             })
             lastMessageType = 'chunk'
             isFirstChunk = false
-            console.log('✅ Created new chunk message:', currentMessageId)
           } else {
             // 이후 청크들은 기존 메시지에 추가
             if (currentMessageId) {
-              console.log('📝 Appending to existing message:', currentMessageId)
               appendToMessage(currentMessageId, chunk)
-              console.log('✅ Appended to message:', currentMessageId, 'New chunk length:', chunk.length)
             } else {
               // currentMessageId가 없는 경우 새 메시지 생성
               currentMessageId = addMessage({
@@ -337,13 +331,11 @@ export default function Dashboard() {
                 isUser: false,
               })
               lastMessageType = 'chunk'
-              console.log('🔄 Created new chunk message (fallback):', currentMessageId)
             }
           }
         },
         // onToolUse: 도구 사용 정보 처리
         (toolName: string, toolInput: any) => {
-          console.log('Tool use received:', { toolName, toolInput, lastMessageType })
           if (lastMessageType === 'tool_use') {
             // 이전 메시지가 tool_use 타입이면 tool_input에 텍스트 추가
             const currentMessage = findMessageById(currentMessageId)
@@ -352,7 +344,6 @@ export default function Dashboard() {
               const newInput = typeof toolInput === 'string' 
                 ? currentInput + toolInput 
                 : toolInput
-              console.log('Updating existing tool_use message:', { currentMessageId, newInput })
               updateMessage(currentMessageId, {
                 tool_name: toolName,
                 tool_input: newInput,
@@ -366,7 +357,6 @@ export default function Dashboard() {
               tool_input: toolInput,
               isUser: false,
             })
-            console.log('Created new tool_use message:', { toolMessageId, toolName, toolInput })
             currentMessageId = toolMessageId
             lastMessageType = 'tool_use'
           }
@@ -585,18 +575,14 @@ export default function Dashboard() {
                 빠른 명령
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {[
-                  { text: '위험 상황 감시해줘', icon: <VisibilityIcon /> },
-                  { text: '어떤 일들이 있었는지 요약해줘', icon: <SummarizeIcon /> },
-                  { text: '모든 감시가 끝났으니 돌아와', icon: <HomeIcon /> }
-                ].map((item, index) => (
+                {quickCommandMapping.quickCommandButtons.map((button, index) => (
                   <StyledButton
                     key={index}
                     variant="outlined"
                     fullWidth
-                    startIcon={item.icon}
+                    startIcon={getIconComponent(button.icon)}
                     disabled={isDisabled}
-                    onClick={() => handleButtonClick(item.text)}
+                    onClick={() => handleButtonClick(button.text)}
                     sx={{ 
                       fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
                       textAlign: 'left', 
@@ -604,7 +590,7 @@ export default function Dashboard() {
                       minHeight: { xs: '40px', sm: '44px', md: '48px' }
                     }}
                   >
-                    {item.text}
+                    {button.text}
                   </StyledButton>
                 ))}
               </Box>

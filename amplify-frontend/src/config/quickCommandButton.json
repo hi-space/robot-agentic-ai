@@ -1,0 +1,19 @@
+{
+  "quickCommandButtons": [
+    {
+      "text": "위험 상황 감시해줘",
+      "icon": "Security",
+      "color": "error"
+    },
+    {
+      "text": "어떤 일들이 있었는지 요약해줘",
+      "icon": "Assessment",
+      "color": "info"
+    },
+    {
+      "text": "모든 감시가 끝났으니 돌아와",
+      "icon": "Home",
+      "color": "success"
+    }
+  ]
+}

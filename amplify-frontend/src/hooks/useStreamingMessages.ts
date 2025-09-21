@@ -40,24 +40,14 @@ export const useStreamingMessages = (): UseStreamingMessagesReturn => {
         return msg
       })
       
-      // 강제로 리렌더링을 트리거하기 위해 새로운 배열 반환
-      return [...updatedMessages]
+      // 변경된 메시지가 있는 경우에만 새로운 배열 반환
+      const hasChanges = updatedMessages.some((msg, index) => msg !== prev[index])
+      return hasChanges ? updatedMessages : prev
     })
   }, [])
 
   const appendToMessage = useCallback((id: string, text: string) => {
-    // 먼저 ref를 업데이트하여 즉시 접근 가능하도록 함
-    const currentMessage = messageRefs.current.get(id)
-    if (currentMessage) {
-      const updatedMessage = { 
-        ...currentMessage, 
-        data: (currentMessage.data || '') + text,
-        timestamp: new Date()
-      }
-      messageRefs.current.set(id, updatedMessage)
-    }
-    
-    // 그 다음 상태를 업데이트하여 리렌더링 트리거
+    // 상태 업데이트를 한 번만 수행하여 리렌더링 최적화
     setMessages(prev => {
       const updatedMessages = prev.map(msg => {
         if (msg.id === id) {
@@ -66,13 +56,16 @@ export const useStreamingMessages = (): UseStreamingMessagesReturn => {
             data: (msg.data || '') + text,
             timestamp: new Date()
           }
+          // ref도 동시에 업데이트
+          messageRefs.current.set(id, updatedMessage)
           return updatedMessage
         }
         return msg
       })
       
-      // 강제로 리렌더링을 트리거하기 위해 새로운 배열 반환
-      return [...updatedMessages]
+      // 변경된 메시지가 있는 경우에만 새로운 배열 반환
+      const hasChanges = updatedMessages.some((msg, index) => msg !== prev[index])
+      return hasChanges ? updatedMessages : prev
     })
   }, [])
 

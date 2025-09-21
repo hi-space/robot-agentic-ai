@@ -114,43 +114,24 @@ const ErrorContainer = styled(Box)(({ theme }) => ({
 }))
 
 const StreamingText = styled(Typography)({
-  // 커서 제거
-  minHeight: '1.2em', // 최소 높이 보장
-  transition: 'all 0.1s ease-in-out', // 부드러운 업데이트
-  '&.typing': {
-    animation: 'pulse 0.5s ease-in-out',
-  },
-  '@keyframes pulse': {
-    '0%': { opacity: 0.7 },
-    '50%': { opacity: 1 },
-    '100%': { opacity: 0.7 },
-  },
+  minHeight: '1.2em', 
 })
 
-const StreamingMessage = memo(function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) {
+function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [displayText, setDisplayText] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
 
   // 스트리밍 상태 결정
   const isStreaming = message.type === 'chunk' && !message.isComplete
   
-  // 메시지 데이터가 변경될 때마다 displayText 업데이트
+  // 메시지 데이터가 변경될 때마다 displayText 업데이트 (깜빡거림 방지)
   useEffect(() => {
     const newDisplayText = message.type === 'complete' && message.final_response 
       ? message.final_response 
       : message.data || ''
     
     if (newDisplayText !== displayText) {
-      setIsTyping(true)
       setDisplayText(newDisplayText)
-      
-      // 타이핑 효과를 위한 짧은 지연
-      const timer = setTimeout(() => {
-        setIsTyping(false)
-      }, 50)
-      
-      return () => clearTimeout(timer)
     }
   }, [message.data, message.final_response, message.type])
 
@@ -251,7 +232,6 @@ const StreamingMessage = memo(function StreamingMessage({ message, isUser, onUpd
           <Box>
             <StreamingText 
               variant="body2" 
-              className={isTyping ? 'typing' : ''}
               sx={{ 
                 lineHeight: 1.5,
                 whiteSpace: 'pre-wrap',
@@ -268,7 +248,6 @@ const StreamingMessage = memo(function StreamingMessage({ message, isUser, onUpd
         return (
           <StreamingText 
             variant="body2" 
-            className={isTyping ? 'typing' : ''}
             sx={{ 
               lineHeight: 1.5,
               whiteSpace: 'pre-wrap',
@@ -338,6 +317,25 @@ const StreamingMessage = memo(function StreamingMessage({ message, isUser, onUpd
       </Box>
     </Box>
   )
-})
+}
 
-export default StreamingMessage
+// memo 비교 함수 추가하여 불필요한 리렌더링 방지
+export default memo(StreamingMessage, (prevProps, nextProps) => {
+  // 메시지 내용이 동일한지 확인
+  const prevMessage = prevProps.message
+  const nextMessage = nextProps.message
+  
+  return (
+    prevMessage.id === nextMessage.id &&
+    prevMessage.type === nextMessage.type &&
+    prevMessage.data === nextMessage.data &&
+    prevMessage.final_response === nextMessage.final_response &&
+    prevMessage.tool_name === nextMessage.tool_name &&
+    prevMessage.tool_input === nextMessage.tool_input &&
+    prevMessage.reasoning_text === nextMessage.reasoning_text &&
+    prevMessage.error === nextMessage.error &&
+    prevMessage.isComplete === nextMessage.isComplete &&
+    prevMessage.isUser === nextMessage.isUser &&
+    prevProps.isUser === nextProps.isUser
+  )
+})

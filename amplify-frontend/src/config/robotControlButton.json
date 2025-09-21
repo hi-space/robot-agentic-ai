@@ -3,99 +3,99 @@
     {
       "text": "0->1",
       "action": "from0to1",
-      "message": "",
-      "icon": "FavoriteIcon",
-      "color": "error"
+      "message": "포인트 0에서 1로 이동합니다",
+      "icon": "Navigation",
+      "color": "primary"
     },
     {
       "text": "1->2",
       "action": "from1to2",
-      "message": "",
-      "icon": "DirectionsWalkIcon",
+      "message": "포인트 1에서 2로 이동합니다",
+      "icon": "Navigation",
       "color": "primary"
     },
     {
       "text": "2->3",
       "action": "from2to3",
-      "message": "",
-      "icon": "SportsMartialArtsIcon",
-      "color": "secondary"
+      "message": "포인트 2에서 3로 이동합니다",
+      "icon": "Navigation",
+      "color": "primary"
     },
     {
       "text": "3->0",
       "action": "from3to0",
-      "message": "",
-      "icon": "SportsMartialArtsIcon",
-      "color": "success"
+      "message": "포인트 3에서 0으로 이동합니다",
+      "icon": "Navigation",
+      "color": "primary"
     },
     {
       "text": "쉬어",
       "action": "normal",
       "message": "네, 얌전히 있을게요",
-      "icon": "HomeIcon",
+      "icon": "Pause",
       "color": "info"
     },
     {
       "text": "멈춰",
       "action": "stop_move",
       "message": "멈추겠습니다.",
-      "icon": "StopIcon",
-      "color": "primary"
+      "icon": "Stop",
+      "color": "error"
     },
     {
       "text": "일어서",
       "action": "stand",
       "message": "일어서겠습니다!",
-      "icon": "DirectionsWalkIcon",
-      "color": "primary"
+      "icon": "VerticalAlignTop",
+      "color": "success"
     },
     {
       "text": "앉기",
       "action": "sit",
       "message": "앉겠습니다!",
-      "icon": "DirectionsRunIcon",
-      "color": "primary"
+      "icon": "VerticalAlignBottom",
+      "color": "success"
     },
     {
       "text": "안녕",
       "action": "hello",
       "message": "안녕하세요! 반가워요!",
-      "icon": "WavingHandIcon",
-      "color": "primary"
+      "icon": "WavingHand",
+      "color": "warning"
     },
     {
       "text": "스트레칭",
       "action": "stretch",
       "message": "스트레칭을 해볼게요!",
-      "icon": "AccessibilityNewIcon",
-      "color": "primary"
+      "icon": "AccessibilityNew",
+      "color": "secondary"
     },
     {
       "text": "긁기",
       "action": "scrape",
       "message": "긁어볼게요!",
-      "icon": "TouchAppIcon",
-      "color": "primary"
+      "icon": "TouchApp",
+      "color": "secondary"
     },
     {
       "text": "하트",
       "action": "heart",
       "message": "사랑해요! 하트를 보여드릴게요!",
-      "icon": "FavoriteIcon",
+      "icon": "Favorite",
       "color": "error"
     },
     {
       "text": "춤1",
       "action": "dance1",
       "message": "첫 번째 춤을 춰볼게요!",
-      "icon": "MusicNoteIcon",
+      "icon": "MusicNote",
       "color": "success"
     },
     {
       "text": "춤2",
       "action": "dance2",
       "message": "두 번째 춤을 춰볼게요!",
-      "icon": "MusicNoteIcon",
+      "icon": "MusicNote",
       "color": "success"
     }
   ]
