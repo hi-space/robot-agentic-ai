@@ -78,30 +78,40 @@ interface AIResponseStatus {
 
 // 스타일드 컴포넌트
 const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: 12,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  border: `1px solid ${theme.palette.divider}`,
+  borderRadius: 20,
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  border: `1px solid rgba(226, 232, 240, 0.8)`,
+  background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     borderColor: theme.palette.primary.light,
-    transform: 'translateY(-2px)',
+    transform: 'translateY(-4px)',
   },
 }))
 
-const StyledButton = styled(Button)(() => ({
-  borderRadius: 8,
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
   textTransform: 'none',
-  fontWeight: 500,
-  padding: '8px 16px',
+  fontWeight: 600,
+  padding: '12px 20px',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   fontSize: '0.875rem',
+  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
   '&:hover': {
     transform: 'translateY(-2px) scale(1.02)',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
   },
   '&:active': {
     transform: 'translateY(0) scale(0.98)',
+  },
+  // 기본 contained 스타일 제거 - 개별 버튼에서 오버라이드
+  '&.MuiButton-outlined': {
+    borderWidth: 2,
+    '&:hover': {
+      borderWidth: 2,
+      backgroundColor: 'rgba(99, 102, 241, 0.04)',
+    },
   },
 }))
 
@@ -110,7 +120,7 @@ const ResponsiveContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   height: 'calc(100vh - 64px)',
-  backgroundColor: theme.palette.grey[50],
+  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
   width: '100%',
   padding: theme.spacing(3),
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -541,24 +551,74 @@ export default function Dashboard() {
                 gap: { xs: 1, sm: 1.5, md: 2 },
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
               }}>
-                {robotControlMapping.robotControlButtons.map((button, index) => (
-                  <StyledButton
-                    key={index}
-                    variant="contained"
-                    color={button.color as any}
-                    fullWidth
-                    startIcon={getIconComponent(button.icon)}
-                    disabled={isDisabled}
-                    onClick={() => handleButtonClick(button.text)}
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
-                      py: { xs: 1, sm: 1.5, md: 1.5 },
-                      minHeight: { xs: '40px', sm: '44px', md: '48px' }
-                    }}
-                  >
-                    {button.text}
-                  </StyledButton>
-                ))}
+                {robotControlMapping.robotControlButtons.map((button, index) => {
+                  // 버튼 색상별 그라데이션 정의 - 더 세련된 색상
+                  const getButtonGradient = (color: string) => {
+                    switch (color) {
+                      case 'primary':
+                        return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' // 블루-바이올렛
+                      case 'secondary':
+                        return 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' // 바이올렛-핑크
+                      case 'success':
+                        return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' // 그린
+                      case 'warning':
+                        return 'linear-gradient(135deg, #f59e0b 0%, #eab308 100%)' // 앰버-옐로우
+                      case 'error':
+                        return 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)' // 레드-핑크
+                      case 'info':
+                        return 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' // 시안-블루
+                      default:
+                        return 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
+                    }
+                  }
+
+                  const getButtonHoverGradient = (color: string) => {
+                    switch (color) {
+                      case 'primary':
+                        return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
+                      case 'secondary':
+                        return 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)'
+                      case 'success':
+                        return 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
+                      case 'warning':
+                        return 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)'
+                      case 'error':
+                        return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                      case 'info':
+                        return 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                      default:
+                        return 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)'
+                    }
+                  }
+
+                  return (
+                    <StyledButton
+                      key={index}
+                      variant="contained"
+                      fullWidth
+                      startIcon={getIconComponent(button.icon)}
+                      disabled={isDisabled}
+                      onClick={() => handleButtonClick(button.text)}
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.85rem' }, 
+                        py: { xs: 1, sm: 1.5, md: 1.5 },
+                        minHeight: { xs: '40px', sm: '44px', md: '48px' },
+                        background: getButtonGradient(button.color),
+                        color: 'white',
+                        fontWeight: 600,
+                        '&:hover': {
+                          background: getButtonHoverGradient(button.color),
+                          transform: 'translateY(-2px)',
+                        },
+                        '& .MuiSvgIcon-root': {
+                          color: 'white',
+                        }
+                      }}
+                    >
+                      {button.text}
+                    </StyledButton>
+                  )
+                })}
               </Box>
             </CardContent>
           </StyledCard>

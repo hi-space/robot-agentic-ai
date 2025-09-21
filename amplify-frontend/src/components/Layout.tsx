@@ -45,7 +45,14 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Navigation */}
-      <AppBar position="static" color="default" elevation={1}>
+      <AppBar 
+        position="static" 
+        elevation={1}
+        sx={{
+          background: 'linear-gradient(135deg, #232f3e 0%, #374151 100%)',
+          color: 'white',
+        }}
+      >
         <Toolbar>
           <Box
             component="img"
@@ -66,7 +73,7 @@ export default function Layout({ children }: LayoutProps) {
               flexGrow: 0, 
               mr: 4, 
               fontWeight: 'bold',
-              color: 'primary.main'
+              color: 'white'
             }}
           >
             Agentic RoboDog
@@ -75,8 +82,19 @@ export default function Layout({ children }: LayoutProps) {
           <Box sx={{ flexGrow: 1 }}>
             <StyledTabs
               value={getCurrentTabIndex()}
-              indicatorColor="primary"
-              textColor="primary"
+              indicatorColor="secondary"
+              textColor="inherit"
+              sx={{
+                '& .MuiTab-root': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  '&.Mui-selected': {
+                    color: 'white',
+                  },
+                },
+                '& .MuiTabs-indicator': {
+                  backgroundColor: 'white',
+                },
+              }}
             >
               {navigation.map((item) => (
                 <Tab

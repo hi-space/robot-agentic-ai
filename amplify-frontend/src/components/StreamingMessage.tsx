@@ -51,22 +51,31 @@ const MessageContainer = styled(Paper, {
   shouldForwardProp: (prop) => prop !== 'isUser',
 })<{ isUser: boolean }>(({ theme, isUser }) => ({
   padding: '12px 16px',
-  borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-  backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[50],
-  color: isUser ? theme.palette.primary.contrastText : theme.palette.text.primary,
+  borderRadius: isUser ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+  backgroundColor: isUser ? 'transparent' : 'transparent',
+  background: isUser 
+    ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' 
+    : 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
+  color: isUser ? 'white' : theme.palette.text.primary,
   maxWidth: '100%',
   marginBottom: '8px',
   wordWrap: 'break-word',
-  border: isUser ? 'none' : `1px solid ${theme.palette.divider}`,
+  border: isUser ? 'none' : `1px solid rgba(226, 232, 240, 0.8)`,
+  boxShadow: isUser 
+    ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+    : '0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   position: 'relative',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 }))
 
 const ToolUseContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.info.light,
-  border: `1px solid ${theme.palette.info.main}`,
-  borderRadius: 8,
-  padding: 12,
+  background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+  border: `1px solid rgba(6, 182, 212, 0.3)`,
+  borderRadius: 12,
+  padding: 16,
   margin: '8px 0',
+  color: 'white',
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   '& .tool-header': {
     display: 'flex',
     alignItems: 'center',
@@ -74,23 +83,27 @@ const ToolUseContainer = styled(Box)(({ theme }) => ({
     marginBottom: 8,
   },
   '& .tool-content': {
-    backgroundColor: theme.palette.background.paper,
-    borderRadius: 4,
-    padding: 8,
+    background: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    padding: 12,
     fontFamily: 'monospace',
     fontSize: '0.875rem',
     maxHeight: 200,
     overflow: 'auto',
     marginTop: 8,
+    color: 'white',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
   },
 }))
 
 const ReasoningContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.warning.light,
-  border: `1px solid ${theme.palette.warning.main}`,
-  borderRadius: 8,
-  padding: 12,
+  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  border: `1px solid rgba(245, 158, 11, 0.3)`,
+  borderRadius: 12,
+  padding: 16,
   margin: '8px 0',
+  color: 'white',
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   '& .reasoning-header': {
     display: 'flex',
     alignItems: 'center',
@@ -100,11 +113,13 @@ const ReasoningContainer = styled(Box)(({ theme }) => ({
 }))
 
 const ErrorContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.error.light,
-  border: `1px solid ${theme.palette.error.main}`,
-  borderRadius: 8,
-  padding: 12,
+  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+  border: `1px solid rgba(239, 68, 68, 0.3)`,
+  borderRadius: 12,
+  padding: 16,
   margin: '8px 0',
+  color: 'white',
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   '& .error-header': {
     display: 'flex',
     alignItems: 'center',
@@ -139,20 +154,32 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
   const renderToolUse = () => (
     <ToolUseContainer>
       <Box className="tool-header">
-        <ToolIcon color="info" />
-        <Typography variant="subtitle2" fontWeight={600}>
+        <ToolIcon sx={{ color: 'white' }} />
+        <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'white' }}>
           도구 사용: {message.tool_name || 'Unknown Tool'}
         </Typography>
         <Chip 
           label="실행중" 
           size="small" 
-          color="info" 
-          variant="outlined"
+          sx={{ 
+            background: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            '& .MuiChip-label': {
+              color: 'white',
+            }
+          }}
         />
         <IconButton
           size="small"
           onClick={() => setIsExpanded(!isExpanded)}
-          sx={{ ml: 'auto' }}
+          sx={{ 
+            ml: 'auto',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            }
+          }}
         >
           {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
@@ -174,19 +201,25 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
   const renderReasoning = () => (
     <ReasoningContainer>
       <Box className="reasoning-header">
-        <ReasoningIcon color="warning" />
-        <Typography variant="subtitle2" fontWeight={600}>
+        <ReasoningIcon sx={{ color: 'white' }} />
+        <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'white' }}>
           AI 추론 과정
         </Typography>
         <IconButton
           size="small"
           onClick={() => setIsExpanded(!isExpanded)}
+          sx={{ 
+            color: 'white',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            }
+          }}
         >
           {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
       </Box>
       <Collapse in={isExpanded}>
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ color: 'white' }}>
           {message.reasoning_text}
         </Typography>
       </Collapse>
@@ -197,12 +230,12 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
   const renderError = () => (
     <ErrorContainer>
       <Box className="error-header">
-        <ErrorIcon color="error" />
-        <Typography variant="subtitle2" fontWeight={600}>
+        <ErrorIcon sx={{ color: 'white' }} />
+        <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'white' }}>
           오류 발생
         </Typography>
       </Box>
-      <Typography variant="body2">
+      <Typography variant="body2" sx={{ color: 'white' }}>
         {message.error}
       </Typography>
     </ErrorContainer>
@@ -211,8 +244,8 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
   // 완료 상태 렌더링
   const renderComplete = () => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-      <CompleteIcon color="success" fontSize="small" />
-      <Typography variant="caption" color="success.main">
+      <CompleteIcon sx={{ color: '#10b981', fontSize: 'small' }} />
+      <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 600 }}>
         응답 완료
       </Typography>
     </Box>
@@ -273,7 +306,12 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, maxWidth: '85%' }}>
         {!isUser && (
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+          <Avatar sx={{ 
+            width: 32, 
+            height: 32, 
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+          }}>
             <RobotIcon />
           </Avatar>
         )}
@@ -287,10 +325,15 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
             // AI 메시지는 더 깔끔한 스타일로 표시
             <Box sx={{ 
               p: 2, 
-              bgcolor: isUser ? 'primary.main' : 'transparent',
-              color: isUser ? 'primary.contrastText' : 'text.primary',
-              borderRadius: isUser ? '18px 18px 4px 18px' : 0,
-              border: isUser ? 'none' : 'none',
+              background: isUser 
+                ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' 
+                : 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
+              color: isUser ? 'white' : 'text.primary',
+              borderRadius: isUser ? '20px 20px 4px 20px' : 0,
+              border: isUser ? 'none' : '1px solid rgba(226, 232, 240, 0.8)',
+              boxShadow: isUser 
+                ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                : '0 2px 4px -1px rgba(0, 0, 0, 0.06)',
               wordWrap: 'break-word',
             }}>
               {renderContent()}
