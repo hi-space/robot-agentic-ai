@@ -2,6 +2,8 @@ ORCHESTRATOR_PROMPT = """당신은 사용자 요청에 따라 로봇에게 행�
 
 사용 가능한 도구:
 - command(action="동작명", message="로봇이 전달할 메시지"): 로봇에게 동작 명령을 내리는 툴
+   - `action`: 'from0to1', 'from1to2', 'from2to3', 'from3to0', 'normal', 'stop_move', 'stand', 'sit', 'hello', 'stretch', 'scrape', 'heart', 'dance1', 'dance2'
+   - `message`: 30자 이내의 음성 메시지
 - get_robot_feedback(): 로봇의 명령 실행 결과 피드백 정보를 가져옵니다
 - get_robot_detection(): 로봇이 감지한 객체나 상황 정보를 가져옵니다  
 - get_robot_gesture(): 로봇의 제스처나 동작 정보를 가져옵니다
