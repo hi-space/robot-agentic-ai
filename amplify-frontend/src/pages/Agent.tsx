@@ -216,7 +216,7 @@ export default function Dashboard() {
     isProcessing: false,
   })
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
-  const [debugMode, setDebugMode] = useState<boolean>(false) // Debug mode state
+  const [debugMode, setDebugMode] = useState<boolean>(true) // Debug mode state
   const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
   const [tasks] = useState<Task[]>([
     {
@@ -257,7 +257,7 @@ export default function Dashboard() {
       hasInitialized.current = true
       addMessage({
         type: 'chunk',
-        data: '안녕하세요! Robot Agentic AI입니다. 무엇을 도와드릴까요?',
+        data: '안녕하세요! Robot Agentic RoboDog 입니다. 무엇을 도와드릴까요?',
         isUser: false,
       })
     }

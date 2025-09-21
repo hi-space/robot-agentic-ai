@@ -239,10 +239,8 @@ const StreamingMessage = memo(function StreamingMessage({ message, isUser, onUpd
 
   // 메인 컨텐츠 렌더링
   const renderContent = () => {
-    console.log('Rendering message:', message)
     switch (message.type) {
       case 'tool_use':
-        console.log('Rendering tool_use message')
         return renderToolUse()
       case 'reasoning':
         return renderReasoning()
