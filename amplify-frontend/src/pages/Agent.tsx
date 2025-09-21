@@ -56,16 +56,6 @@ const getIconComponent = (iconName: string) => {
   return iconMap[iconName] || <DirectionsRunIcon />
 }
 
-// 타입 정의 
-
-interface Task {
-  id: string
-  name: string
-  status: 'pending' | 'in_progress' | 'completed' | 'failed'
-  progress?: number
-  timestamp: Date
-}
-
 interface AgentCoreStatus {
   isConnected: boolean
   isLoading: boolean
@@ -218,39 +208,7 @@ export default function Dashboard() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [debugMode, setDebugMode] = useState<boolean>(true) // Debug mode state
   const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
-  const [tasks] = useState<Task[]>([
-    {
-      id: '1',
-      name: '로봇 이동 명령',
-      status: 'in_progress',
-      progress: 75,
-      timestamp: new Date(Date.now() - 2 * 60 * 1000),
-    },
-    {
-      id: '2',
-      name: 'AI 명령 분석',
-      status: 'completed',
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-    },
-    {
-      id: '3',
-      name: '센서 데이터 수집',
-      status: 'pending',
-      timestamp: new Date(Date.now() - 10 * 60 * 1000),
-    },
-    {
-      id: '4',
-      name: '장애물 회피',
-      status: 'failed',
-      timestamp: new Date(Date.now() - 15 * 60 * 1000),
-    },
-    {
-      id: '5',
-      name: '사용자 응답 생성',
-      status: 'completed',
-      timestamp: new Date(Date.now() - 20 * 60 * 1000),
-    },
-  ])
+  
   // 초기 메시지 추가 (중복 방지 로직 포함)
   useEffect(() => {
     if (messages.length === 0 && !hasInitialized.current) {
@@ -548,45 +506,6 @@ export default function Dashboard() {
   // 전체 비활성화 상태 계산
   const isDisabled = robotControlStatus.isExecuting || aiResponseStatus.isWaiting || aiResponseStatus.isProcessing
 
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircleIcon />
-      case 'in_progress':
-        return <PlayIcon />
-      case 'pending':
-        return <ScheduleIcon />
-      case 'failed':
-        return <ErrorIcon />
-      default:
-        return null
-    }
-  }
-
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'completed':
-        return 'success'
-      case 'in_progress':
-        return 'primary'
-      case 'pending':
-        return 'warning'
-      case 'failed':
-        return 'error'
-      default:
-        return 'default'
-    }
-  }
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ko-KR', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit',
-      hour12: false 
-    })
-  }
-
   return (
     <ResponsiveContainer>
       <MainLayout>
@@ -744,89 +663,6 @@ export default function Dashboard() {
           />
         </ChatPanel>
 
-        {/* 오른쪽 패널 - 작업 상태 */}
-        <SidePanel>
-          <StyledCard sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: 0,
-            '&:hover': {
-              transform: 'translateY(-4px)',
-            }
-          }}>
-            <CardContent sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                작업 현황
-              </Typography>
-              <List sx={{ p: 0, flex: 1, overflow: 'auto' }}>
-                {tasks.map((task, index) => (
-                  <React.Fragment key={task.id}>
-                    <ListItem sx={{ 
-                      px: 0, 
-                      py: 1.5, 
-                      flexDirection: 'column', 
-                      alignItems: 'stretch',
-                      borderRadius: 2,
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      '&:hover': {
-                        backgroundColor: 'action.hover',
-                        transform: 'translateX(4px)',
-                      }
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, flexGrow: 1, fontSize: '0.875rem' }}>
-                          {task.name}
-                        </Typography>
-                        <Box sx={{ color: getStatusColor(task.status) === 'success' ? 'success.main' : 
-                                          getStatusColor(task.status) === 'error' ? 'error.main' :
-                                          getStatusColor(task.status) === 'warning' ? 'warning.main' : 'primary.main' }}>
-                          {getStatusIcon(task.status)}
-                        </Box>
-                      </Box>
-                      
-                      {task.progress !== undefined && (
-                        <Box sx={{ mb: 1.5 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={task.progress}
-                            sx={{ 
-                              height: 4, 
-                              borderRadius: 2,
-                              bgcolor: 'grey.200',
-                              '& .MuiLinearProgress-bar': {
-                                borderRadius: 2
-                              }
-                            }}
-                          />
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.75rem' }}>
-                            {task.progress}%
-                          </Typography>
-                        </Box>
-                      )}
-                      
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Chip
-                          label={task.status === 'in_progress' ? '진행중' : 
-                                 task.status === 'completed' ? '완료' :
-                                 task.status === 'pending' ? '대기' : '실패'}
-                          color={getStatusColor(task.status) as any}
-                          size="small"
-                          variant={task.status === 'pending' ? 'outlined' : 'filled'}
-                          sx={{ fontSize: '0.75rem', height: 24 }}
-                        />
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          {formatTime(task.timestamp)}
-                        </Typography>
-                      </Box>
-                    </ListItem>
-                    {index < tasks.length - 1 && <Divider sx={{ my: 1 }} />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </CardContent>
-          </StyledCard>
-        </SidePanel>
       </MainLayout>
     </ResponsiveContainer>
   )
