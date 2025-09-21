@@ -1,6 +1,7 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -9,6 +10,20 @@ const backend = defineBackend({
   auth,
   data,
 });
+
+// Add permissions to authenticated users
+backend.auth.resources.authenticatedUserIamRole.addToPrincipalPolicy(
+  new PolicyStatement({
+    actions: [
+      'polly:SynthesizeSpeech',
+      'lambda:InvokeFunction'
+    ],
+    resources: [
+      '*',
+      'arn:aws:lambda:ap-northeast-2:533267442321:function:lambda-robo-controller-for-robo'
+    ],
+  })
+);
 
 // Export resources for frontend use
 export const Resources = {

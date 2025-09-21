@@ -21,6 +21,10 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Code as CodeIcon,
+  PlayArrow,
+  Pause,
+  Stop,
+  VolumeUp,
 } from '@mui/icons-material'
 import { styled } from '@mui/material/styles'
 import JsonView from '@uiw/react-json-view'
@@ -46,6 +50,16 @@ interface StreamingMessageProps {
   message: StreamMessage
   isUser: boolean
   onUpdate?: (updatedMessage: StreamMessage) => void
+  onTTSPlay?: (text: string) => void
+  onTTSPause?: () => void
+  onTTSStop?: () => void
+  ttsStatus?: {
+    isEnabled: boolean
+    isPlaying: boolean
+    isPaused: boolean
+    hasAudio: boolean
+    currentText: string
+  }
 }
 
 // 스타일드 컴포넌트
@@ -148,7 +162,7 @@ const keyframes = `
   }
 `
 
-function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) {
+function StreamingMessage({ message, isUser, onUpdate, onTTSPlay, onTTSPause, onTTSStop, ttsStatus }: StreamingMessageProps) {
   const theme = useTheme()
   
   // tool_use 메시지는 기본적으로 펼쳐져 있도록 설정
@@ -396,6 +410,12 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
   
   // tool_use, reasoning, error 타입은 자체 스타일링이 있으므로 추가 박스 불필요
   const hasCustomStyling = message.type === 'tool_use' || message.type === 'reasoning' || message.type === 'error'
+  
+  // TTS 가능한 메시지인지 확인 (AI 응답이고 텍스트가 있고 TTS가 활성화된 경우)
+  const canUseTTS = !isUser && (message.type === 'chunk' || message.type === 'complete') && displayText.trim() && ttsStatus?.isEnabled
+  
+  // 현재 메시지가 TTS로 재생 중인지 확인 (TTS가 활성화된 경우에만)
+  const isCurrentTTSMessage = ttsStatus?.isEnabled && ttsStatus?.currentText === displayText && ttsStatus?.hasAudio
 
   return (
     <Box
@@ -443,23 +463,76 @@ function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) 
               {renderContent()}
             </Box>
           )}
-          <Typography 
-            variant="caption" 
-            color="text.secondary" 
-            sx={{ 
-              ml: isUser ? 0 : 1,
-              mr: isUser ? 1 : 0,
-              display: 'block',
-              mt: 0.5
-            }}
-          >
-            {message.timestamp.toLocaleTimeString('ko-KR', { 
-              hour: '2-digit', 
-              minute: '2-digit', 
-              second: '2-digit',
-              hour12: false 
-            })}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ 
+                ml: isUser ? 0 : 1,
+                mr: isUser ? 1 : 0,
+                fontSize: '0.75rem'
+              }}
+            >
+              {message.timestamp.toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: false 
+              })}
+            </Typography>
+            
+            {/* TTS 버튼들 - TTS가 활성화된 경우에만 표시 */}
+            {canUseTTS && onTTSPlay && ttsStatus?.isEnabled && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {isCurrentTTSMessage && ttsStatus?.isPlaying ? (
+                  <Tooltip title="일시정지">
+                    <IconButton
+                      size="small"
+                      onClick={onTTSPause}
+                      sx={{ 
+                        color: 'warning.main',
+                        '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.1)' }
+                      }}
+                    >
+                      <Pause sx={{ fontSize: '1rem' }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="음성 재생">
+                    <IconButton
+                      size="small"
+                      onClick={() => onTTSPlay(displayText)}
+                      sx={{ 
+                        color: isCurrentTTSMessage ? 'primary.main' : 'text.secondary',
+                        '&:hover': { backgroundColor: 'rgba(99, 102, 241, 0.1)' }
+                      }}
+                    >
+                      <PlayArrow sx={{ fontSize: '1rem' }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                
+                {isCurrentTTSMessage && ttsStatus?.hasAudio && (
+                  <Tooltip title="정지">
+                    <IconButton
+                      size="small"
+                      onClick={onTTSStop}
+                      sx={{ 
+                        color: 'error.main',
+                        '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' }
+                      }}
+                    >
+                      <Stop sx={{ fontSize: '1rem' }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                
+                {isCurrentTTSMessage && ttsStatus?.isPlaying && (
+                  <VolumeUp sx={{ fontSize: '0.875rem', color: 'success.main' }} />
+                )}
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
     </Box>
@@ -472,6 +545,14 @@ export default memo(StreamingMessage, (prevProps, nextProps) => {
   const prevMessage = prevProps.message
   const nextMessage = nextProps.message
   
+  // TTS 상태 변경 시 리렌더링 필요
+  const ttsStatusChanged = 
+    prevProps.ttsStatus?.isEnabled !== nextProps.ttsStatus?.isEnabled ||
+    prevProps.ttsStatus?.isPlaying !== nextProps.ttsStatus?.isPlaying ||
+    prevProps.ttsStatus?.isPaused !== nextProps.ttsStatus?.isPaused ||
+    prevProps.ttsStatus?.hasAudio !== nextProps.ttsStatus?.hasAudio ||
+    prevProps.ttsStatus?.currentText !== nextProps.ttsStatus?.currentText
+  
   return (
     prevMessage.id === nextMessage.id &&
     prevMessage.type === nextMessage.type &&
@@ -483,6 +564,7 @@ export default memo(StreamingMessage, (prevProps, nextProps) => {
     prevMessage.error === nextMessage.error &&
     prevMessage.isComplete === nextMessage.isComplete &&
     prevMessage.isUser === nextMessage.isUser &&
-    prevProps.isUser === nextProps.isUser
+    prevProps.isUser === nextProps.isUser &&
+    !ttsStatusChanged
   )
 })

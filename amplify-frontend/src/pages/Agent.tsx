@@ -13,6 +13,8 @@ import {
   Switch,
   FormControlLabel,
   Tooltip,
+  Collapse,
+  IconButton,
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import {
@@ -29,12 +31,14 @@ import {
   Security,
   Assessment,
   Home,
-  DirectionsRun,
+  DirectionsRun,  
+  ExpandMore,
 } from '@mui/icons-material'
 import { invokeAgentCore, processAgentCoreStream, validateEnvironment } from '../lib/BedrockAgentCore'
 import { invokeRobotControl, mapButtonTextToAction, isRobotControlButton, RobotAction } from '../lib/LambdaClient'
 import ChatInterface from '../components/ChatInterface'
 import { useStreamingMessages } from '../hooks/useStreamingMessages'
+import { ttsService, TTSOptions } from '../lib/PollyTTS'
 import robotControlMapping from '../config/robotControlButton.json'
 import quickCommandMapping from '../config/quickCommandButton.json'
 
@@ -74,6 +78,15 @@ interface RobotControlStatus {
 interface AIResponseStatus {
   isWaiting: boolean
   isProcessing: boolean
+}
+
+interface TTSStatus {
+  isEnabled: boolean
+  isPlaying: boolean
+  isPaused: boolean
+  hasAudio: boolean
+  currentText: string
+  error: string | null
 }
 
 // 스타일드 컴포넌트
@@ -210,8 +223,17 @@ export default function Dashboard() {
     isWaiting: false,
     isProcessing: false,
   })
+  const [ttsStatus, setTtsStatus] = useState<TTSStatus>({
+    isEnabled: false,
+    isPlaying: false,
+    isPaused: false,
+    hasAudio: false,
+    currentText: '',
+    error: null,
+  })
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [debugMode, setDebugMode] = useState<boolean>(true) // Debug mode state
+  const [settingsExpanded, setSettingsExpanded] = useState<boolean>(false) // Settings card collapse state
   const hasInitialized = useRef(false) // 초기화 상태를 추적하는 ref
   
   // 초기 메시지 추가 (중복 방지 로직 포함)
@@ -252,6 +274,13 @@ export default function Dashboard() {
     }
 
     checkAgentCoreConnection()
+  }, [])
+
+  // 컴포넌트 언마운트 시 TTS 정리
+  useEffect(() => {
+    return () => {
+      ttsService.stopAudio()
+    }
   }, [])
 
   const handleSendMessage = async (text: string) => {
@@ -321,6 +350,7 @@ export default function Dashboard() {
             })
             lastMessageType = 'chunk'
             isFirstChunk = false
+            
           } else {
             // tool_use 후에 오는 chunk는 별도 메시지로 생성하고 이전 tool_use 완료 처리
             if (lastMessageType === 'tool_use') {
@@ -341,6 +371,7 @@ export default function Dashboard() {
               // 기존 chunk 메시지에 추가
               if (currentMessageId) {
                 appendToMessage(currentMessageId, chunk)
+                
               } else {
                 // currentMessageId가 없는 경우 새 메시지 생성
                 currentMessageId = addMessage({
@@ -349,6 +380,7 @@ export default function Dashboard() {
                   isUser: false,
                 })
                 lastMessageType = 'chunk'
+                
               }
             } else {
               // 다른 타입 후에 오는 chunk는 새 메시지 생성
@@ -441,6 +473,12 @@ export default function Dashboard() {
             })
           }
           lastMessageType = 'complete'
+          
+          // TTS 재생 (AI 응답이 완료되면)
+          if (ttsStatus.isEnabled && finalResponse.trim()) {
+            handleTTSPlay(finalResponse)
+          }
+          
           // AI 응답 완료
           setAiResponseStatus({
             isWaiting: false,
@@ -542,6 +580,75 @@ export default function Dashboard() {
   const handleResetChat = () => {
     clearMessages()
     hasInitialized.current = false // 리셋 시 초기화 상태도 리셋
+    // TTS 정리
+    ttsService.stopAudio()
+    setTtsStatus(prev => ({
+      ...prev,
+      isPlaying: false,
+      isPaused: false,
+      hasAudio: false,
+      currentText: '',
+      error: null,
+    }))
+  }
+
+  // TTS 관련 함수들
+  const handleTTSPlay = async (text: string) => {
+    if (!ttsStatus.isEnabled || !text.trim()) return
+
+    try {
+      setTtsStatus(prev => ({ ...prev, error: null }))
+      await ttsService.speak(text)
+      
+      // 재생 상태 업데이트
+      const playbackState = ttsService.getPlaybackState()
+      setTtsStatus(prev => ({
+        ...prev,
+        isPlaying: playbackState.isPlaying,
+        isPaused: playbackState.isPaused,
+        hasAudio: playbackState.hasAudio,
+        currentText: text,
+      }))
+    } catch (error) {
+      console.error('TTS 재생 실패:', error)
+      setTtsStatus(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'TTS 재생 실패',
+        isPlaying: false,
+        isPaused: false,
+      }))
+    }
+  }
+
+  const handleTTSPause = () => {
+    ttsService.pauseAudio()
+    setTtsStatus(prev => ({ ...prev, isPaused: true, isPlaying: false }))
+  }
+
+  const handleTTSResume = () => {
+    ttsService.resumeAudio()
+    setTtsStatus(prev => ({ ...prev, isPaused: false, isPlaying: true }))
+  }
+
+  const handleTTSStop = () => {
+    ttsService.stopAudio()
+    setTtsStatus(prev => ({
+      ...prev,
+      isPlaying: false,
+      isPaused: false,
+      hasAudio: false,
+      currentText: '',
+    }))
+  }
+
+  const handleTTSToggle = () => {
+    if (ttsStatus.isPlaying) {
+      handleTTSStop()
+    } else if (ttsStatus.isPaused) {
+      handleTTSResume()
+    } else if (ttsStatus.currentText) {
+      handleTTSPlay(ttsStatus.currentText)
+    }
   }
 
   // 전체 비활성화 상태 계산
@@ -698,40 +805,146 @@ export default function Dashboard() {
             </CardContent>
           </StyledCard>
 
-             {/* Debug 모드 토글 */}
-             <StyledCard sx={{ 
+          {/* 설정 패널 - 접을 수 있는 카드 */}
+          <StyledCard sx={{ 
             flex: '0 0 auto',
             '&:hover': {
               transform: 'translateY(-4px)',
             }
           }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
-                  디버그 모드
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  mb: settingsExpanded ? 2 : 0,
+                  cursor: 'pointer',
+                  py: 0.5,
+                  px: 0.5
+                }}
+                onClick={() => setSettingsExpanded(!settingsExpanded)}
+              >
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary', 
+                  fontSize: '1rem',
+                  lineHeight: 1.2,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  설정
                 </Typography>
-                <Tooltip title={debugMode ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" : "로봇 제어 기능 On (MCP 서버 연동)"}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={debugMode}
-                        onChange={(e) => setDebugMode(e.target.checked)}
-                        color="primary"
-                        disabled={isDisabled}
-                      />
+                <IconButton 
+                  size="small"
+                  sx={{ 
+                    transform: settingsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    p: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
                     }
-                    label={debugMode ? "ON" : "OFF"}
-                    labelPlacement="end"
-                    sx={{ m: 0 }}
-                  />
-                </Tooltip>
+                  }}
+                >
+                  <ExpandMore />
+                </IconButton>
               </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                {debugMode 
-                  ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" 
-                  : "로봇 제어 기능 On (MCP 서버 연동)"
-                }
-              </Typography>
+              
+              <Collapse in={settingsExpanded}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  {/* Debug 모드 토글 */}
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 600, 
+                        color: 'text.primary', 
+                        fontSize: '0.9rem',
+                        lineHeight: 1.2
+                      }}>
+                        디버그 모드
+                      </Typography>
+                      <Tooltip title={debugMode ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" : "로봇 제어 기능 On (MCP 서버 연동)"}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={debugMode}
+                              onChange={(e) => setDebugMode(e.target.checked)}
+                              color="primary"
+                              disabled={isDisabled}
+                              size="small"
+                            />
+                          }
+                          label={debugMode ? "ON" : "OFF"}
+                          labelPlacement="end"
+                          sx={{ m: 0 }}
+                        />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {debugMode 
+                        ? "로봇 제어 기능 Off (MCP 서버 연결 없음)" 
+                        : "로봇 제어 기능 On (MCP 서버 연동)"
+                      }
+                    </Typography>
+                  </Box>
+
+                  <Divider />
+
+                  {/* TTS 설정 토글 */}
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 600, 
+                        color: 'text.primary', 
+                        fontSize: '0.9rem',
+                        lineHeight: 1.2
+                      }}>
+                        음성 출력 (TTS)
+                      </Typography>
+                      <Tooltip title={ttsStatus.isEnabled ? "TTS 기능 활성화" : "TTS 기능 비활성화"}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={ttsStatus.isEnabled}
+                              onChange={(e) => {
+                                const newEnabled = e.target.checked
+                                if (!newEnabled) {
+                                  // TTS를 끌 때 기존 재생 중인 오디오 정지
+                                  ttsService.stopAudio()
+                                  setTtsStatus(prev => ({
+                                    ...prev,
+                                    isEnabled: newEnabled,
+                                    isPlaying: false,
+                                    isPaused: false,
+                                    hasAudio: false,
+                                    currentText: '',
+                                    error: null,
+                                  }))
+                                } else {
+                                  // TTS를 켤 때는 단순히 활성화만
+                                  setTtsStatus(prev => ({ ...prev, isEnabled: newEnabled }))
+                                }
+                              }}
+                              color="primary"
+                              disabled={isDisabled}
+                              size="small"
+                            />
+                          }
+                          label={ttsStatus.isEnabled ? "ON" : "OFF"}
+                          labelPlacement="end"
+                          sx={{ m: 0 }}
+                        />
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {ttsStatus.isEnabled 
+                        ? "각 메시지의 재생 버튼을 클릭하여 음성으로 들을 수 있습니다" 
+                        : "TTS 기능이 비활성화되었습니다"
+                      }
+                    </Typography>
+                  </Box>
+                </Box>
+              </Collapse>
             </CardContent>
           </StyledCard>
           
@@ -747,6 +960,10 @@ export default function Dashboard() {
             onResetChat={handleResetChat}
             agentCoreStatus={agentCoreStatus}
             isDisabled={isDisabled}
+            onTTSPlay={handleTTSPlay}
+            onTTSPause={handleTTSPause}
+            onTTSStop={handleTTSStop}
+            ttsStatus={ttsStatus}
           />
         </ChatPanel>
 

@@ -68,6 +68,16 @@ interface ChatInterfaceProps {
   onResetChat: () => void
   agentCoreStatus: AgentCoreStatus
   isDisabled?: boolean
+  onTTSPlay?: (text: string) => void
+  onTTSPause?: () => void
+  onTTSStop?: () => void
+  ttsStatus?: {
+    isEnabled: boolean
+    isPlaying: boolean
+    isPaused: boolean
+    hasAudio: boolean
+    currentText: string
+  }
 }
 
 export default function ChatInterface({
@@ -78,6 +88,10 @@ export default function ChatInterface({
   onResetChat,
   agentCoreStatus,
   isDisabled = false,
+  onTTSPlay,
+  onTTSPause,
+  onTTSStop,
+  ttsStatus,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -176,6 +190,10 @@ export default function ChatInterface({
             key={message.id}
             message={message}
             isUser={message.isUser ?? false}
+            onTTSPlay={onTTSPlay}
+            onTTSPause={onTTSPause}
+            onTTSStop={onTTSStop}
+            ttsStatus={ttsStatus}
           />
         ))}
         <div ref={messagesEndRef} />
