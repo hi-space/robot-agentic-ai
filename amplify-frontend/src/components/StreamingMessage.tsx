@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import {
   Box,
   Typography,
@@ -115,18 +115,44 @@ const ErrorContainer = styled(Box)(({ theme }) => ({
 
 const StreamingText = styled(Typography)({
   // 커서 제거
+  minHeight: '1.2em', // 최소 높이 보장
+  transition: 'all 0.1s ease-in-out', // 부드러운 업데이트
+  '&.typing': {
+    animation: 'pulse 0.5s ease-in-out',
+  },
+  '@keyframes pulse': {
+    '0%': { opacity: 0.7 },
+    '50%': { opacity: 1 },
+    '100%': { opacity: 0.7 },
+  },
 })
 
-export default function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) {
+const StreamingMessage = memo(function StreamingMessage({ message, isUser, onUpdate }: StreamingMessageProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [displayText, setDisplayText] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
 
   // 스트리밍 상태 결정
   const isStreaming = message.type === 'chunk' && !message.isComplete
   
-  // 표시할 텍스트 결정
-  const displayText = message.type === 'complete' && message.final_response 
-    ? message.final_response 
-    : message.data || ''
+  // 메시지 데이터가 변경될 때마다 displayText 업데이트
+  useEffect(() => {
+    const newDisplayText = message.type === 'complete' && message.final_response 
+      ? message.final_response 
+      : message.data || ''
+    
+    if (newDisplayText !== displayText) {
+      setIsTyping(true)
+      setDisplayText(newDisplayText)
+      
+      // 타이핑 효과를 위한 짧은 지연
+      const timer = setTimeout(() => {
+        setIsTyping(false)
+      }, 50)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [message.data, message.final_response, message.type])
 
   // 도구 사용 정보 렌더링
   const renderToolUse = () => (
@@ -227,6 +253,7 @@ export default function StreamingMessage({ message, isUser, onUpdate }: Streamin
           <Box>
             <StreamingText 
               variant="body2" 
+              className={isTyping ? 'typing' : ''}
               sx={{ 
                 lineHeight: 1.5,
                 whiteSpace: 'pre-wrap',
@@ -243,6 +270,7 @@ export default function StreamingMessage({ message, isUser, onUpdate }: Streamin
         return (
           <StreamingText 
             variant="body2" 
+            className={isTyping ? 'typing' : ''}
             sx={{ 
               lineHeight: 1.5,
               whiteSpace: 'pre-wrap',
@@ -312,4 +340,6 @@ export default function StreamingMessage({ message, isUser, onUpdate }: Streamin
       </Box>
     </Box>
   )
-}
+})
+
+export default StreamingMessage

@@ -199,7 +199,7 @@ const ChatPanel = styled(Box)(({ theme }) => ({
 
 
 export default function Dashboard() {
-  const { messages, addMessage, updateMessage, appendToMessage, clearMessages } = useStreamingMessages()
+  const { messages, addMessage, updateMessage, appendToMessage, clearMessages, findMessageById } = useStreamingMessages()
   const [inputText, setInputText] = useState('')
   const [agentCoreStatus, setAgentCoreStatus] = useState<AgentCoreStatus>({
     isConnected: false,
@@ -343,8 +343,18 @@ export default function Dashboard() {
 
       await processAgentCoreStream(
         stream,
+        // onEvent: 전체 이벤트 처리
+        (event: any) => {
+          console.log('Event received:', event)
+        },
         // onChunk: 스트리밍 텍스트 처리
         (chunk: string) => {
+          console.log('🎯 Chunk received in Agent.tsx:', { 
+            chunk: chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''), 
+            chunkLength: chunk.length,
+            isFirstChunk, 
+            currentMessageId 
+          })
           if (isFirstChunk) {
             // 첫 번째 청크가 오면 새 메시지 생성
             currentMessageId = addMessage({
@@ -354,9 +364,23 @@ export default function Dashboard() {
             })
             lastMessageType = 'chunk'
             isFirstChunk = false
+            console.log('✅ Created new chunk message:', currentMessageId)
           } else {
             // 이후 청크들은 기존 메시지에 추가
-            appendToMessage(currentMessageId, chunk)
+            if (currentMessageId) {
+              console.log('📝 Appending to existing message:', currentMessageId)
+              appendToMessage(currentMessageId, chunk)
+              console.log('✅ Appended to message:', currentMessageId, 'New chunk length:', chunk.length)
+            } else {
+              // currentMessageId가 없는 경우 새 메시지 생성
+              currentMessageId = addMessage({
+                type: 'chunk',
+                data: chunk,
+                isUser: false,
+              })
+              lastMessageType = 'chunk'
+              console.log('🔄 Created new chunk message (fallback):', currentMessageId)
+            }
           }
         },
         // onToolUse: 도구 사용 정보 처리
@@ -364,7 +388,7 @@ export default function Dashboard() {
           console.log('Tool use received:', { toolName, toolInput, lastMessageType })
           if (lastMessageType === 'tool_use') {
             // 이전 메시지가 tool_use 타입이면 tool_input에 텍스트 추가
-            const currentMessage = messages.find(msg => msg.id === currentMessageId)
+            const currentMessage = findMessageById(currentMessageId)
             if (currentMessage) {
               const currentInput = currentMessage.tool_input || ''
               const newInput = typeof toolInput === 'string' 
@@ -393,7 +417,7 @@ export default function Dashboard() {
         (reasoning: string) => {
           if (lastMessageType === 'reasoning') {
             // 이전 메시지가 reasoning 타입이면 기존 메시지에 추가
-            const currentMessage = messages.find(msg => msg.id === currentMessageId)
+            const currentMessage = findMessageById(currentMessageId)
             if (currentMessage) {
               updateMessage(currentMessageId, {
                 reasoning_text: (currentMessage.reasoning_text || '') + reasoning,
