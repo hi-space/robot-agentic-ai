@@ -14,6 +14,7 @@
     "@aws-sdk/client-bedrock-agentcore": "^3.847.0",
     "@aws-sdk/client-bedrock-runtime": "^3.846.0",
     "@aws-sdk/client-cognito-identity": "^3.883.0",
+    "@aws-sdk/client-lambda": "^3.893.0",
     "@aws-sdk/client-polly": "^3.893.0",
     "@aws-sdk/client-sts": "^3.883.0",
     "@aws-sdk/credential-provider-cognito-identity": "^3.883.0",
@@ -35,9 +36,6 @@
   "devDependencies": {
     "@aws-amplify/backend": "^1.16.1",
     "@aws-amplify/backend-cli": "^1.8.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@testing-library/user-event": "^14.5.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1"
   },
@@ -76,12 +74,8 @@
   ],
   "author": "Robot Agentic AI Team",
   "license": "ISC",
-  "homepage": "https://github.com/your-org/robot-agentic-ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/robot-agentic-ai.git"
-  },
-  "bugs": {
-    "url": "https://github.com/your-org/robot-agentic-ai/issues"
+    "url": "https://github.com/hi-space/robot-agentic-ai.git"
   }
 }

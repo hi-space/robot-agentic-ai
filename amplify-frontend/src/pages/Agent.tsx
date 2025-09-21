@@ -166,6 +166,15 @@ const SidePanel = styled(Box)(({ theme }) => ({
   flex: '0 0 auto',
   overflow: 'auto', // 스크롤 가능하도록
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  // 스크롤바 숨기기 (Webkit 기반 브라우저)
+  '&::-webkit-scrollbar': {
+    width: 0,
+    background: 'transparent',
+  },
+  // Firefox에서 스크롤바 숨기기
+  scrollbarWidth: 'none',
+  // IE/Edge에서 스크롤바 숨기기
+  msOverflowStyle: 'none',
   [theme.breakpoints.up('sm')]: {
     width: '100%',
     height: 'calc(100vh - 180px)', // 중간 화면에서 높이 조정
