@@ -111,7 +111,13 @@ export default function ChatInterface({
   }
 
   return (
-    <StyledCard sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <StyledCard sx={{ 
+      flex: 1, 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: '400px', // 최소 높이 보장
+      height: '100%' // 부모 컨테이너의 높이를 모두 사용
+    }}>
       {/* 채팅 헤더 */}
       <Box sx={{ 
         p: 2, 

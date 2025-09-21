@@ -118,11 +118,58 @@ export default function Layout({ children }: LayoutProps) {
         flexGrow: 1, 
         display: 'flex', 
         flexDirection: 'column',
-        minHeight: 0,
+        minHeight: 'calc(100vh - 64px - 28px)', // 100vh - header height - footer height
         maxWidth: '100%',
-        width: '100%'
+        width: '100%',
+        overflow: 'hidden'
       }}>
         {children}
+      </Box>
+
+      {/* Footer */}
+      <Box
+        component="footer"
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          py: 0.5,
+          px: 2,
+          backgroundColor: '#f8f9fa',
+          borderTop: '1px solid #e9ecef',
+          textAlign: 'center',
+          zIndex: 1000,
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#6c757d',
+              fontSize: '0.7rem',
+            }}
+          >
+            © 2025 Robot-Agentic-AI All rights reserved. | Powered by
+          </Typography>
+          <Box
+            component="img"
+            src="/logo-aws.png"
+            alt="AWS"
+            sx={{
+              height: 12,
+              width: 'auto',
+              objectFit: 'contain',
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   )

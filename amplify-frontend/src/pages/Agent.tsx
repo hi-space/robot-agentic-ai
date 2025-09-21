@@ -124,13 +124,15 @@ const StyledButton = styled(Button)(({ theme }) => ({
 const ResponsiveContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  height: 'calc(100vh - 64px)',
+  height: 'calc(100vh - 64px - 28px)', // 헤더와 푸터 높이 제외
   background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
   width: '100%',
   padding: theme.spacing(3),
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  overflow: 'hidden', // 스크롤 방지
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+    height: 'calc(100vh - 64px - 28px)', // 작은 화면에서도 동일한 높이 계산
   },
   [theme.breakpoints.up('lg')]: {
     padding: theme.spacing(4),
@@ -161,14 +163,19 @@ const SidePanel = styled(Box)(({ theme }) => ({
   gap: theme.spacing(2),
   height: 'auto',
   flex: '0 0 auto',
+  maxHeight: 'calc(50vh - 100px)', // 작은 화면에서 최대 높이 제한
+  overflow: 'auto', // 스크롤 가능하도록
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('sm')]: {
     width: '100%',
+    maxHeight: 'calc(40vh - 80px)', // 중간 화면에서 높이 조정
   },
   [theme.breakpoints.up('md')]: {
     width: '350px',
     height: '100%',
     flex: '0 0 350px',
+    maxHeight: 'none', // 데스크톱에서는 높이 제한 없음
+    overflow: 'visible',
   },
   [theme.breakpoints.up('lg')]: {
     width: '380px',
@@ -187,15 +194,15 @@ const ChatPanel = styled(Box)(({ theme }) => ({
   flexDirection: 'column',
   minWidth: '100%',
   minHeight: 0,
-  height: '400px',
+  height: 'calc(100vh - 200px)', // 작은 화면에서도 충분한 높이 보장
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('sm')]: {
     minWidth: '100%',
-    height: '500px',
+    height: 'calc(100vh - 150px)', // 중간 화면에서 높이 증가
   },
   [theme.breakpoints.up('md')]: {
     minWidth: '500px',
-    height: '100%',
+    height: '100%', // 데스크톱에서는 전체 높이 사용
   },
   [theme.breakpoints.up('lg')]: {
     minWidth: '700px',
@@ -731,8 +738,8 @@ export default function Dashboard() {
                       xs: '1fr', 
                       sm: '1fr 1fr', 
                       md: '1fr 1fr',
-                      lg: '1fr 1fr 1fr',
-                      xl: '1fr 1fr 1fr'
+                      lg: '1fr 1fr',
+                      xl: '1fr 1fr'
                     }, 
                     gap: { xs: 1, sm: 1.5, md: 2 },
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'

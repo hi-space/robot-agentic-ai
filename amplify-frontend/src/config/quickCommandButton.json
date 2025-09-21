@@ -2,28 +2,27 @@
   "quickCommandButtons": [
     {
       "text": "하이",
-      "icon": "Security",
-      "color": "warning"
+      "icon": "WavingHand"
     },
     {
       "text": "앉아봐라",
-      "icon": "Security",
-      "color": "warning"
+      "icon": "VerticalAlignBottom"
+    },
+    {
+      "text": "앉았다 일어나",
+      "icon": "VerticalAlignTop"
     },
     {
       "text": "위험 상황 감시해줘",
-      "icon": "Security",
-      "color": "error"
+      "icon": "Security"
     },
     {
       "text": "어떤 일들이 있었는지 요약해줘",
-      "icon": "Assessment",
-      "color": "info"
+      "icon": "Assessment"
     },
     {
       "text": "모든 감시가 끝났으니 돌아와",
-      "icon": "Home",
-      "color": "success"
+      "icon": "Home"
     }
   ]
 }
