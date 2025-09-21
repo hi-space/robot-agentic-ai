@@ -1478,7 +1478,7 @@
 
 "@aws-sdk/client-bedrock-runtime@3.622.0":
   version "3.622.0"
-  resolved "https://registry.npmjs.org/@aws-sdk/client-bedrock-runtime/-/client-bedrock-runtime-3.622.0.tgz"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/client-bedrock-runtime/-/client-bedrock-runtime-3.622.0.tgz#07d9204481f295e5b450ad8e41f4c91d8b4efb5f"
   integrity sha512-zJJWnHdORNNSM74yTeya5UyzEfXrFJDAuU7/JPc8PerURC5QElwWHNq6OR9AVTmJNvgs66XNZDgt46FStphMbQ==
   dependencies:
     "@aws-crypto/sha256-browser" "5.2.0"
@@ -4540,7 +4540,7 @@
 
 "@aws-sdk/types@3.734.0":
   version "3.734.0"
-  resolved "https://registry.npmjs.org/@aws-sdk/types/-/types-3.734.0.tgz"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/types/-/types-3.734.0.tgz#af5e620b0e761918282aa1c8e53cac6091d169a2"
   integrity sha512-o11tSPTT70nAkGV1fN9wm/hAIiLPyWX6SuGf+9JyTp7S/rC2cFWhR26MvA69nplcjNaXVzB0f+QFrLXXjOqCrg==
   dependencies:
     "@smithy/types" "^4.1.0"
