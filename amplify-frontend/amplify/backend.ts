@@ -25,6 +25,16 @@ backend.auth.resources.authenticatedUserIamRole.addToPrincipalPolicy(
   })
 );
 
+// Add permissions to unauthenticated users
+backend.auth.resources.unauthenticatedUserIamRole.addToPrincipalPolicy(
+  new PolicyStatement({
+    actions: [
+      'polly:SynthesizeSpeech'
+    ],
+    resources: ['*'],
+  })
+);
+
 // Export resources for frontend use
 export const Resources = {
   UserPool: backend.auth.resources.userPool,
