@@ -124,15 +124,15 @@ const StyledButton = styled(Button)(({ theme }) => ({
 const ResponsiveContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  height: 'calc(100vh - 64px - 28px)', // 헤더와 푸터 높이 제외
+  minHeight: 'calc(100vh - 64px - 28px)', // 헤더와 푸터 높이 제외, minHeight로 변경
   background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
   width: '100%',
   padding: theme.spacing(3),
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  overflow: 'hidden', // 스크롤 방지
+  overflow: 'auto', // 스크롤 활성화
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
-    height: 'calc(100vh - 64px - 28px)', // 작은 화면에서도 동일한 높이 계산
+    minHeight: 'calc(100vh - 64px - 28px)', // 작은 화면에서도 동일한 높이 계산
   },
   [theme.breakpoints.up('lg')]: {
     padding: theme.spacing(4),
@@ -146,12 +146,13 @@ const MainLayout = styled(Box)(({ theme }) => ({
   gap: theme.spacing(3),
   flexGrow: 1,
   minHeight: 0,
-  height: '100%',
+  height: 'auto', // height를 auto로 변경하여 내용에 따라 조정
   margin: '0 auto',
   width: '100%',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('md')]: {
     flexDirection: 'row',
+    height: '100%', // 데스크톱에서는 전체 높이 사용
   },
 }))
 
@@ -161,29 +162,28 @@ const SidePanel = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(2),
-  height: 'auto',
+  height: 'calc(100vh - 200px)', // ChatPanel과 동일한 높이
   flex: '0 0 auto',
-  maxHeight: 'calc(50vh - 100px)', // 작은 화면에서 최대 높이 제한
   overflow: 'auto', // 스크롤 가능하도록
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('sm')]: {
     width: '100%',
-    maxHeight: 'calc(40vh - 80px)', // 중간 화면에서 높이 조정
+    height: 'calc(100vh - 180px)', // 중간 화면에서 높이 조정
   },
   [theme.breakpoints.up('md')]: {
     width: '350px',
-    height: '100%',
     flex: '0 0 350px',
-    maxHeight: 'none', // 데스크톱에서는 높이 제한 없음
-    overflow: 'visible',
+    height: 'calc(100vh - 160px)', // 데스크톱에서 ChatPanel과 동일한 높이
   },
   [theme.breakpoints.up('lg')]: {
     width: '380px',
     flex: '0 0 380px',
+    height: 'calc(100vh - 140px)', // 큰 화면에서 ChatPanel과 동일한 높이
   },
   [theme.breakpoints.up('xl')]: {
     width: '420px',
     flex: '0 0 420px',
+    height: 'calc(100vh - 120px)', // 매우 큰 화면에서 ChatPanel과 동일한 높이
   },
 }))
 
@@ -194,21 +194,23 @@ const ChatPanel = styled(Box)(({ theme }) => ({
   flexDirection: 'column',
   minWidth: '100%',
   minHeight: 0,
-  height: 'calc(100vh - 200px)', // 작은 화면에서도 충분한 높이 보장
+  height: 'calc(100vh - 200px)', // 화면 높이에 맞춰 설정
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   [theme.breakpoints.up('sm')]: {
     minWidth: '100%',
-    height: 'calc(100vh - 150px)', // 중간 화면에서 높이 증가
+    height: 'calc(100vh - 180px)', // 중간 화면에서 높이 조정
   },
   [theme.breakpoints.up('md')]: {
     minWidth: '500px',
-    height: '100%', // 데스크톱에서는 전체 높이 사용
+    height: 'calc(100vh - 160px)', // 데스크톱에서 더 큰 높이
   },
   [theme.breakpoints.up('lg')]: {
     minWidth: '700px',
+    height: 'calc(100vh - 140px)', // 큰 화면에서 최대 높이
   },
   [theme.breakpoints.up('xl')]: {
     minWidth: '900px',
+    height: 'calc(100vh - 120px)', // 매우 큰 화면에서 최대 높이
   },
 }))
 

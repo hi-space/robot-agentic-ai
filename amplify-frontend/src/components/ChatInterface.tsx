@@ -116,7 +116,8 @@ export default function ChatInterface({
       display: 'flex', 
       flexDirection: 'column', 
       minHeight: '400px', // 최소 높이 보장
-      height: '100%' // 부모 컨테이너의 높이를 모두 사용
+      height: '100%', // 부모 컨테이너의 높이를 모두 사용
+      maxHeight: '100%' // 부모 컨테이너 높이를 최대한 활용
     }}>
       {/* 채팅 헤더 */}
       <Box sx={{ 
