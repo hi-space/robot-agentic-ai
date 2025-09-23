@@ -34,21 +34,21 @@ def command_robot(action: str, message: str) -> str:
         move = ['stretch']
     elif action == "scrape":
         move = ['scrape']
-    elif action == "dance1":
+    elif action == "dance1" or action == "dance1":
         move = ['dance1']
-    elif action == "dance2":
+    elif action == "dance2" or action == "dance2":
         move = ['dance2']
-    elif action == "행복해":
+    elif action == "행복해" or action == "heart":
         move = ['heart']
-    elif action == "피곤해":
+    elif action == "피곤해" or action == "stretch":
         move = ['stretch']
-    elif action == "반가워":
+    elif action == "반가워" or action == "heart":
         move = ['heart']
-    elif action == "춤춰봐":
+    elif action == "춤춰봐" or action == 'dance"':
         move = ['dance1']
-    elif action == "앉아":
+    elif action == "앉아" or action == "sit":
         move = ['sit']
-    elif action == "일어서":
+    elif action == "일어서" or action == "stand":
         move = ['stand']
     else:
         move = [action]
