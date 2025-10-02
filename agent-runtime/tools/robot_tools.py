@@ -78,7 +78,7 @@ def _get_fifo_messages(queue_name: str, config: dict) -> Dict[str, Any]:
             if isinstance(message_body, dict) and 'timestamp' in message_body:
                 try:
                     # Parse timestamp from message
-                    message_timestamp = datetime.fromisoformat(message_body['timestamp'].replace('Z', '+00:00'))
+                    message_timestamp = datetime.fromisoformat(str(message_body['timestamp']).replace('Z', '+00:00'))
                     message_timestamp_seconds = message_timestamp.timestamp()
                     
                     # Skip message if it's older than 3 minutes
